@@ -1,0 +1,13 @@
+{
+    "name": "choro5083/avideo-login-oidc",
+    "description": "OpenID Connect login plugin for AVideo",
+    "type": "project",
+    "license": "MIT",
+    "homepage": "https://github.com/Choro5083/AVideo-LoginOIDC",
+    "authors": [
+        { "name": "Choro5083" }
+    ],
+    "require": {
+        "php": ">=8.0"
+    }
+}
