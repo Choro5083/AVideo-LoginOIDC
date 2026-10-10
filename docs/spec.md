@@ -75,6 +75,8 @@ IdP が対応している方式は Discovery の `token_endpoint_auth_methods_su
 - AVideo 同梱の Hybridauth の Keycloak プロバイダは、Discovery・ID Token の検証・nonce・PKCE を持たないため使わない
 - 署名の検証は自作しない
 
+**プラグインが発行する SQL は、MariaDB と MySQL の両方で動く書き方にする。** AVideo 本体は MariaDB を主に想定しているが、MySQL で運用するサイトもあるため。どちらか専用の構文（`ADD COLUMN IF NOT EXISTS` など）は使わず、両方でテストする。
+
 本体の `firebase/php-jwt` の版に依存するので、AVideo の更新時に動作を確認する（README の「動作確認済みの AVideo」）。
 
 ## (2) AVideo との統合
