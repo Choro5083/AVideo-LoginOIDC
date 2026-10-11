@@ -12,6 +12,11 @@ try {
     return;
 }
 $loginOidcUrl = $global['webSiteRootURL'] . 'plugin/LoginOIDC/login.php';
+// 本体のログイン画面は、ログイン後の戻り先を redirectUri で持っている。本体がすでに
+// HTML 用にエスケープしているので、元に戻してから渡す（login.php が安全な URL かを確かめる）。
+if (!empty($_GET['redirectUri']) && is_string($_GET['redirectUri'])) {
+    $loginOidcUrl .= '?' . http_build_query(['returnTo' => html_entity_decode($_GET['redirectUri'], ENT_QUOTES, 'UTF-8')]);
+}
 ?>
 <div class="col-md-12">
     <a id="loginOIDC" class="btn btn-primary btn-block" href="<?php echo htmlspecialchars($loginOidcUrl, ENT_QUOTES); ?>">

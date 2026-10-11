@@ -12,6 +12,8 @@ use LoginOIDC\Native\NativeLoginPolicy;
 use LoginOIDC\Oidc\Discovery;
 use LoginOIDC\Oidc\FileCache;
 use LoginOIDC\Oidc\OidcException;
+use LoginOIDC\Session\AutoRedirectPolicy;
+use LoginOIDC\Session\PageRequest;
 use LoginOIDC\Session\SessionMarker;
 use LoginOIDC\Session\SessionPolicy;
 use LoginOIDC\Settings;
@@ -59,17 +61,6 @@ final class RequestGuard
         if (isCommandLineInterface()) {
             return;
         }
-        $marker = self::marker();
-        if ($marker === null) {
-            return;
-        }
-        // 印は IdP 経由でログインしたユーザのもの。別のユーザのセッションになっていたら、印の方を捨てる。
-        if ((int) ($_SESSION['user']['id'] ?? 0) !== $marker->userId) {
-            self::clearMarker();
-
-            return;
-        }
-
         try {
             $settings = \LoginOIDC::settings();
         } catch (InvalidSettingException $e) {
@@ -78,12 +69,27 @@ final class RequestGuard
             return;
         }
 
-        if (self::isLogoffRequest()) {
-            self::logoutAtProvider($settings, $marker);
-
-            return;
+        $marker = self::marker();
+        // 印は IdP 経由でログインしたユーザのもの。別のユーザのセッションになっていたら、印の方を捨てる。
+        if ($marker !== null && (int) ($_SESSION['user']['id'] ?? 0) !== $marker->userId) {
+            self::clearMarker();
+            $marker = null;
         }
 
+        if ($marker !== null) {
+            if (self::isLogoffRequest()) {
+                self::logoutAtProvider($settings, $marker);
+
+                return;
+            }
+            self::endSessionIfRevoked($marker);
+        }
+
+        self::redirectToProviderIfAnonymous($settings);
+    }
+
+    private static function endSessionIfRevoked(SessionMarker $marker): void
+    {
         try {
             $reason = SessionPolicy::reasonToEnd($marker, (new SessionRegistry())->state($marker));
         } catch (DbException $e) {
@@ -96,6 +102,30 @@ final class RequestGuard
             \User::logoff();
             self::clearMarker();
         }
+    }
+
+    /** 未ログインの画面表示を、設定に従って IdP のログインへ送る。 */
+    private static function redirectToProviderIfAnonymous(Settings $settings): void
+    {
+        global $global;
+
+        // 先に安い判定を済ませる。User::isLogged() は Cookie からの復元を試みるため、
+        // 対象外のリクエスト（API や動画）では呼ばない。
+        $request = new PageRequest(
+            method: (string) ($_SERVER['REQUEST_METHOD'] ?? ''),
+            scriptName: (string) ($_SERVER['SCRIPT_NAME'] ?? ''),
+            accept: (string) ($_SERVER['HTTP_ACCEPT'] ?? ''),
+            ajax: strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest',
+            remoteAddress: (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+        );
+        if (!AutoRedirectPolicy::shouldRedirect($settings, $request) || \User::isLogged()) {
+            return;
+        }
+
+        $login = $global['webSiteRootURL'] . 'plugin/LoginOIDC/login.php?'
+            . http_build_query(['returnTo' => (string) ($_SERVER['REQUEST_URI'] ?? '/')]);
+        header('Location: ' . $login, true, 302);
+        exit;
     }
 
     /** ログインが成立した直後に呼ばれる（本体の onUserSignIn フック）。 */
