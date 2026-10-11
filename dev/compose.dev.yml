@@ -8,6 +8,8 @@ services:
   avideo:
     volumes:
       - "${LOGINOIDC_REPO:?LOGINOIDC_REPO を設定する}/LoginOIDC:/var/www/html/AVideo/plugin/LoginOIDC"
+      # テストを AVideo 本体の PHP と phpunit で流すために、リポジトリ全体も見せる。
+      - "${LOGINOIDC_REPO}:/opt/loginoidc:ro"
 
   # DB は MariaDB の LTS に固定する。本家の定義は Dockerfile.mariadb で
   # mariadb:latest（短期サポートの版）を使うため、作り直すたびに版が変わりうる。

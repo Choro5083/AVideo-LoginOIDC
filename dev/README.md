@@ -66,6 +66,28 @@ docker compose -f docker-compose.yml -f <このリポジトリ>/dev/compose.dev.
 | Keycloak | `http://<HOST>:8081/` |
 | Discovery | `http://<HOST>:8081/realms/loginoidc-test/.well-known/openid-configuration` |
 
+## プラグインを有効にする
+
+`avideo` のコンテナの中で実行する。プラグインを有効にし、テーブルを作り、テスト用の realm に向けた設定を入れる。
+
+```bash
+docker exec avideo-avideo-1 php /opt/loginoidc/dev/setup-plugin.php http://<HOST>:8081
+```
+
+## テスト
+
+PHPUnit は開発用の依存として入れる（`vendor/` はリポジトリに含めない。プラグイン本体には外部の依存はない）。
+
+```bash
+# 依存を入れる（初回と、composer.json を変えたとき）
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/app -w /app composer:2 install
+
+# AVideo 本体と同じ PHP で流す
+docker exec avideo-avideo-1 bash -c "cd /opt/loginoidc && php vendor/bin/phpunit"
+```
+
+AVideo 本体の `vendor/bin/phpunit` は使わない。本体に同梱されている PHPUnit は一部のファイルが欠けていて動かない。
+
 ## テスト用の realm
 
 `keycloak/realm-loginoidc-test.json`。realm 名は `loginoidc-test`。
