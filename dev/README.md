@@ -180,6 +180,15 @@ docker exec avideo-avideo-1 bash -c "rm -f /var/www/html/AVideo/Encoder/videos/c
 
 **`avideo` のコンテナの中では、自分のホスト名（`SERVER_NAME`）が 127.0.0.1 を指す。** entrypoint が `/etc/hosts` に書き足すため。Keycloak を別のコンテナとして同じホスト名で公開すると、ブラウザからは届くが、`avideo` のコンテナからは届かない（Discovery が失敗する）。`compose.dev.yml` では、Keycloak を `avideo` と同じネットワークに置いて（`network_mode: "service:avideo"`）解決してある。そのため Keycloak のポートは `avideo` のサービスで公開していて、`avideo` を作り直したら `keycloak` も作り直す必要がある。
 
+**Encoder の画面に `Undefined variable $aURL` と `$json_file` の Warning が出る。** AVideo の証明書が自己署名のため、Encoder が AVideo の設定を取りに行って TLS の検証に失敗している（Warning の文面は、失敗を記録する箇所にある本家の別の不具合によるもの）。開発環境では、Encoder の設定ファイルで検証を切る。DB を作り直してインストーラを流し直したときは、もう一度入れる。
+
+```bash
+docker exec avideo-avideo-1 bash -c 'cd /var/www/html/AVideo/Encoder/videos && grep -q disableSSLVerification configuration.php \
+  || sed -i "s|^require_once .*include_config.php.;|\$global[\"disableSSLVerification\"] = true;\n&|" configuration.php'
+```
+
+本番では切らない。正規の証明書を使う。
+
 **AVideo のログは `videos/avideo.log` ではなく、コンテナの標準エラーに出る。** `docker logs avideo-avideo-1` で読む。ASCII 以外はエスケープされる。
 
 **Keycloak のデータ用に名前付きボリュームを付けると起動しない。** ボリュームが root の持ち物になり、Keycloak（uid 1000）が書けないため。永続化しない構成にしてある。
