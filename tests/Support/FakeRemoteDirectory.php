@@ -11,10 +11,10 @@ use LoginOIDC\Sync\SyncException;
 
 final class FakeRemoteDirectory implements RemoteDirectory
 {
-    /** @var array<string, RemoteUser> sub → ユーザ。無ければ「存在しない」 */
+    /** @var array<string, RemoteUser> sub → user. Absent means "does not exist" */
     public array $users = [];
 
-    /** @var list<string> 調べようとすると API が失敗する sub */
+    /** @var list<string> subs whose lookup makes the API fail */
     public array $failing = [];
 
     /** @param list<string> $roles */

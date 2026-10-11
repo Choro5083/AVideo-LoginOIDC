@@ -27,7 +27,7 @@ final class SettingsTest extends TestCase
     {
         $settings = Settings::fromDataObject(self::data());
 
-        self::assertSame('https://idp.example.com/realms/test', $settings->issuer, '末尾のスラッシュは除く');
+        self::assertSame('https://idp.example.com/realms/test', $settings->issuer, 'the trailing slash is removed');
         self::assertSame(ClientAuthMethod::SecretBasic, $settings->clientAuthMethod);
         self::assertSame(['openid', 'profile', 'email'], $settings->scopes);
         self::assertSame(60, $settings->clockSkewSeconds);
@@ -91,7 +91,7 @@ final class SettingsTest extends TestCase
         try {
             $settings = Settings::fromDataObject(self::data(['clientSecret' => 'inline', 'clientSecretFile' => $file]));
 
-            self::assertSame('from-file', $settings->resolveClientSecret(), '前後の改行は除く');
+            self::assertSame('from-file', $settings->resolveClientSecret(), 'surrounding line breaks are removed');
         } finally {
             unlink($file);
         }
@@ -102,7 +102,7 @@ final class SettingsTest extends TestCase
     {
         try {
             Settings::fromDataObject(self::data(['clientSecret' => '']))->resolveClientSecret();
-            self::fail('シークレットが無いのに通った');
+            self::fail('passed without a secret');
         } catch (InvalidSettingException $e) {
             self::assertStringContainsString('clientSecret:', $e->getMessage());
         }
@@ -118,19 +118,19 @@ final class SettingsTest extends TestCase
     {
         $wrap = static fn (mixed $value): object => (object) ['type' => 'textarea', 'value' => $value];
 
-        yield '知らないフラグ' => [['managedFlags' => 'isAdmin, isRoot'], 'managedFlags'];
-        yield '壊れた JSON' => [['flagMapping' => $wrap('{"admin": ')], 'flagMapping'];
-        yield '対応表が配列' => [['flagMapping' => $wrap('["isAdmin"]')], 'flagMapping'];
-        yield '対応先が配列でない' => [['flagMapping' => $wrap('{"admin": "isAdmin"}')], 'flagMapping.admin'];
-        yield '対応先に知らないフラグ' => [['flagMapping' => $wrap('{"admin": ["root"]}')], 'flagMapping.admin'];
-        yield 'group の ID が数値でない' => [['groupMapping' => $wrap('{"staff": ["editors"]}')], 'groupMapping.staff'];
-        yield 'group の ID が 0' => [['managedGroups' => '0'], 'managedGroups'];
-        yield '知らない認証方式' => [['clientAuthMethod' => $wrap('private_key_jwt')], 'clientAuthMethod'];
-        yield '知らない制御モード' => [['nativeLoginMode' => $wrap('deny')], 'nativeLoginMode'];
-        yield '時刻のずれが範囲外' => [['clockSkewSeconds' => 601], 'clockSkewSeconds'];
-        yield '時刻のずれが数値でない' => [['clockSkewSeconds' => 'abc'], 'clockSkewSeconds'];
-        yield '割合が範囲外' => [['syncMaxDisableRatio' => 101], 'syncMaxDisableRatio'];
-        yield '回数の上限が負' => [['loginRateLimit' => '-1'], 'loginRateLimit'];
+        yield 'unknown flag' => [['managedFlags' => 'isAdmin, isRoot'], 'managedFlags'];
+        yield 'broken JSON' => [['flagMapping' => $wrap('{"admin": ')], 'flagMapping'];
+        yield 'mapping is a list' => [['flagMapping' => $wrap('["isAdmin"]')], 'flagMapping'];
+        yield 'mapped value is not a list' => [['flagMapping' => $wrap('{"admin": "isAdmin"}')], 'flagMapping.admin'];
+        yield 'unknown flag in the mapped value' => [['flagMapping' => $wrap('{"admin": ["root"]}')], 'flagMapping.admin'];
+        yield 'group ID is not a number' => [['groupMapping' => $wrap('{"staff": ["editors"]}')], 'groupMapping.staff'];
+        yield 'group ID is 0' => [['managedGroups' => '0'], 'managedGroups'];
+        yield 'unknown authentication method' => [['clientAuthMethod' => $wrap('private_key_jwt')], 'clientAuthMethod'];
+        yield 'unknown control mode' => [['nativeLoginMode' => $wrap('deny')], 'nativeLoginMode'];
+        yield 'clock skew out of range' => [['clockSkewSeconds' => 601], 'clockSkewSeconds'];
+        yield 'clock skew is not a number' => [['clockSkewSeconds' => 'abc'], 'clockSkewSeconds'];
+        yield 'ratio out of range' => [['syncMaxDisableRatio' => 101], 'syncMaxDisableRatio'];
+        yield 'negative rate limit' => [['loginRateLimit' => '-1'], 'loginRateLimit'];
     }
 
     /** @param array<string, mixed> $overrides */

@@ -72,7 +72,7 @@ final class ProvisionerTest extends TestCase
 
     public function testNeverLinksToExistingUserWithSameUsernameOrEmail(): void
     {
-        // 既存の「alice」は別人。IdP 側で username を合わせても、そのアカウントには入れない。
+        // The existing "alice" is someone else. Matching the username at the provider does not get into that account.
         $store = new InMemoryUsers();
         $existing = $store->add('alice');
         $store->users[$existing]['email'] = 'alice@example.com';
@@ -103,8 +103,8 @@ final class ProvisionerTest extends TestCase
 
         $second = $provisioner->provision(self::login(['preferred_username' => 'alice-renamed', 'name' => 'Alice Renamed']));
 
-        self::assertSame('alice', $second->username, 'username は作成後に変えない');
-        self::assertSame('Alice Renamed', $store->users[$first->userId]['name'], '名前は更新する');
+        self::assertSame('alice', $second->username, 'the username never changes after creation');
+        self::assertSame('Alice Renamed', $store->users[$first->userId]['name'], 'the name is updated');
     }
 
     public function testUpdatesOnlyTheProfileFieldsEnabledInSettings(): void
@@ -146,7 +146,7 @@ final class ProvisionerTest extends TestCase
         self::assertSame(['isAdmin' => true, 'canUpload' => true], $store->users[$id]['flags']);
 
         $provisioner->provision(self::login(['roles' => ['uploader']]));
-        self::assertSame(['isAdmin' => false, 'canUpload' => true], $store->users[$id]['flags'], '剥奪された権限は落とす');
+        self::assertSame(['isAdmin' => false, 'canUpload' => true], $store->users[$id]['flags'], 'a removed permission is dropped');
     }
 
     public function testChangesOnlyManagedGroups(): void
@@ -158,7 +158,7 @@ final class ProvisionerTest extends TestCase
             'groupMapping' => '{"staff": [3], "editors": [5]}',
         ]);
         $id = $provisioner->provision(self::login(['groups' => ['staff']]))->userId;
-        $store->users[$id]['groups'][] = 7; // 管理者が手で足した、管理対象でない group
+        $store->users[$id]['groups'][] = 7; // a group an admin added by hand, not managed
 
         $provisioner->provision(self::login(['groups' => ['editors']]));
 
@@ -172,7 +172,7 @@ final class ProvisionerTest extends TestCase
 
         try {
             $provisioner->provision(self::login(['roles' => ['other']]));
-            self::fail('条件を満たさないのにログインできた');
+            self::fail('signed in without meeting the requirement');
         } catch (LoginDeniedException $e) {
             self::assertStringContainsString('required', $e->getMessage());
         }
@@ -214,18 +214,18 @@ final class ProvisionerTest extends TestCase
 
         try {
             $provisioner->provision(self::login(['roles' => ['admin'], 'name' => 'Changed']));
-            self::fail('無効のユーザがログインできた');
+            self::fail('a disabled user signed in');
         } catch (LoginDeniedException $e) {
             self::assertStringContainsString('disabled', $e->getMessage());
         }
-        self::assertSame('Alice Example', $store->users[$id]['name'], '無効のユーザの情報は更新しない');
+        self::assertSame('Alice Example', $store->users[$id]['name'], 'a disabled user is not updated');
         self::assertSame(['isAdmin' => false], $store->users[$id]['flags']);
         self::assertSame([], $store->logins);
     }
 
     public function testConcurrentFirstLoginsEndUpWithOneUser(): void
     {
-        // ユーザを作って対応を保存する直前に、同じ人の別のリクエストが先に完了した場合
+        // another request of the same person finishes just before this one stores its link
         $store = new InMemoryUsers();
         $winner = null;
         $store->beforeLink = static function () use ($store, &$winner): void {
@@ -235,7 +235,7 @@ final class ProvisionerTest extends TestCase
 
         $result = self::provisioner($store)->provision(self::login());
 
-        self::assertSame($winner, $result->userId, '先に作られた方のユーザを使う');
+        self::assertSame($winner, $result->userId, 'the user created first is used');
         self::assertFalse($result->created);
     }
 }

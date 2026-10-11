@@ -14,14 +14,14 @@ final class UsernamePolicyTest extends TestCase
     /** @return iterable<string, array{string, string}> */
     public static function rawNames(): iterable
     {
-        yield 'そのまま使える' => ['alice', 'alice'];
-        yield 'メールアドレス' => ['alice@example.com', 'alice@example.com'];
-        yield '空白と記号を除く（マークアップは残らない）' => ['<b>al ice</b>', 'baliceb'];
-        yield '引用符を除く' => ["o'brien\"", 'obrien'];
-        yield '日本語は残らない' => ['山田 taro', 'taro'];
-        yield '前後の記号を落とす' => ['.-alice-.', 'alice'];
-        yield '空なら既定の名前' => ['', 'user'];
-        yield '使える文字が無ければ既定の名前' => ['山田', 'user'];
+        yield 'usable as it is' => ['alice', 'alice'];
+        yield 'e-mail address' => ['alice@example.com', 'alice@example.com'];
+        yield 'spaces and symbols are removed (no markup survives)' => ['<b>al ice</b>', 'baliceb'];
+        yield 'quotes are removed' => ["o'brien\"", 'obrien'];
+        yield 'non-ASCII characters are removed' => ['山田 taro', 'taro'];
+        yield 'leading and trailing symbols are dropped' => ['.-alice-.', 'alice'];
+        yield 'default name when empty' => ['', 'user'];
+        yield 'default name when no usable character is left' => ['山田', 'user'];
     }
 
     #[DataProvider('rawNames')]

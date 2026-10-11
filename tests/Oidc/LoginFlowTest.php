@@ -33,8 +33,8 @@ final class LoginFlowTest extends TestCase
     }
 
     /**
-     * @param array<string, mixed>|null $tokenBody トークンエンドポイントの応答。省略時は検証を通る ID Token
-     * @param array<string, mixed>|null $userInfo  渡すと UserInfo も読む
+     * @param array<string, mixed>|null $tokenBody response of the token endpoint. An ID Token that verifies when omitted
+     * @param array<string, mixed>|null $userInfo  when given, UserInfo is read too
      */
     private static function http(?array $tokenBody = null, ?array $userInfo = null): FakeHttpClient
     {
@@ -83,7 +83,7 @@ final class LoginFlowTest extends TestCase
         self::assertSame($pending->state, $query['state']);
         self::assertSame($pending->nonce, $query['nonce']);
         self::assertSame(Pkce::fromVerifier($pending->codeVerifier)->challenge, $query['code_challenge']);
-        self::assertStringNotContainsString($pending->codeVerifier, $url, 'verifier は送らない');
+        self::assertStringNotContainsString($pending->codeVerifier, $url, 'the verifier is not sent');
         self::assertSame('/video/1', $pending->returnTo);
     }
 
@@ -120,8 +120,8 @@ final class LoginFlowTest extends TestCase
         $login = self::flow($http, useUserInfo: true)
             ->finish(self::pending(), ['state' => 'state-1', 'code' => 'code-1'], TestIdp::NOW);
 
-        self::assertSame('alice@example.com', $login->claims['email'], 'ID Token に無い claim は UserInfo から足す');
-        self::assertSame('alice', $login->claims['preferred_username'], '両方にあれば ID Token を優先する');
+        self::assertSame('alice@example.com', $login->claims['email'], 'claims missing from the ID Token come from UserInfo');
+        self::assertSame('alice', $login->claims['preferred_username'], 'the ID Token wins when both have it');
     }
 
     public function testFinishRejectsUserInfoForAnotherSubject(): void
@@ -140,11 +140,11 @@ final class LoginFlowTest extends TestCase
 
         try {
             self::flow($http)->finish(self::pending(), ['state' => 'forged', 'code' => 'code-1'], TestIdp::NOW);
-            self::fail('state が違うコールバックを受け入れた');
+            self::fail('accepted a callback with a different state');
         } catch (OidcException $e) {
             self::assertStringContainsString('state', $e->getMessage());
         }
-        self::assertSame([], $http->requests, 'IdP と通信する前に止める');
+        self::assertSame([], $http->requests, 'stops before contacting the provider');
     }
 
     public function testFinishRejectsCallbackWithoutPendingLogin(): void
@@ -181,7 +181,7 @@ final class LoginFlowTest extends TestCase
 
     public function testFinishRejectsTokenWithWrongNonce(): void
     {
-        // 別のログインのために発行された ID Token を差し込まれた場合
+        // an ID Token issued for another sign-in is injected
         $http = self::http(['id_token' => self::$idp->idToken(nonce: 'other-login'), 'access_token' => 'a']);
 
         $this->expectException(OidcException::class);

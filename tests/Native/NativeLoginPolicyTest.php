@@ -46,9 +46,9 @@ final class NativeLoginPolicyTest extends TestCase
         $settings = ['nativeLoginMode' => 'allowlist', 'nativeLoginAllowlist' => "admin\noperator"];
 
         self::assertFalse(self::denied($settings, self::attempt('admin', linked: false)));
-        self::assertTrue(self::denied($settings, self::attempt('someone', linked: false)), '紐付いていなくても、一覧に無ければ拒否');
+        self::assertTrue(self::denied($settings, self::attempt('someone', linked: false)), 'denied when not in the list, linked or not');
         self::assertTrue(self::denied($settings, self::attempt('bob', linked: true)));
-        self::assertTrue(self::denied($settings, self::attempt('Admin', linked: false)), '大文字と小文字は区別する');
+        self::assertTrue(self::denied($settings, self::attempt('Admin', linked: false)), 'case-sensitive');
     }
 
     public function testEmptyAllowlistDeniesEveryone(): void
@@ -58,13 +58,13 @@ final class NativeLoginPolicyTest extends TestCase
 
     public function testCookieRestorationIsNeverAllowedForLinkedUsers(): void
     {
-        // どのモードでも、IdP に紐付いたユーザは Cookie からログインを復元させない
+        // in every mode, a user linked to the provider is never restored from the cookie
         foreach (['allow', 'denyLinked'] as $mode) {
             self::assertTrue(self::denied(['nativeLoginMode' => $mode], self::attempt(linked: true, viaCookie: true)), $mode);
         }
         self::assertFalse(
             self::denied(['nativeLoginMode' => 'allow'], self::attempt('admin', linked: false, viaCookie: true)),
-            '紐付いていないユーザの Cookie による復元は、本体の挙動のまま',
+            'restoring an unlinked user from the cookie stays as AVideo does it',
         );
     }
 
@@ -83,21 +83,21 @@ final class NativeLoginPolicyTest extends TestCase
     /** @return iterable<string, array{string, list<string>, bool}> */
     public static function addresses(): iterable
     {
-        yield '単一の IPv4' => ['192.0.2.10', ['192.0.2.10'], true];
-        yield '別の IPv4' => ['192.0.2.11', ['192.0.2.10'], false];
-        yield 'IPv4 の CIDR の中' => ['198.51.100.200', ['198.51.100.0/24'], true];
-        yield 'IPv4 の CIDR の外' => ['198.51.101.1', ['198.51.100.0/24'], false];
-        yield 'バイト境界でない CIDR の中' => ['10.0.3.255', ['10.0.0.0/22'], true];
-        yield 'バイト境界でない CIDR の外' => ['10.0.4.0', ['10.0.0.0/22'], false];
+        yield 'single IPv4 address' => ['192.0.2.10', ['192.0.2.10'], true];
+        yield 'another IPv4 address' => ['192.0.2.11', ['192.0.2.10'], false];
+        yield 'inside an IPv4 CIDR range' => ['198.51.100.200', ['198.51.100.0/24'], true];
+        yield 'outside an IPv4 CIDR range' => ['198.51.101.1', ['198.51.100.0/24'], false];
+        yield 'inside a CIDR range not on a byte boundary' => ['10.0.3.255', ['10.0.0.0/22'], true];
+        yield 'outside a CIDR range not on a byte boundary' => ['10.0.4.0', ['10.0.0.0/22'], false];
         yield '/32' => ['10.0.0.1', ['10.0.0.1/32'], true];
-        yield '/0 はすべて' => ['203.0.113.9', ['0.0.0.0/0'], true];
-        yield 'IPv6 の CIDR の中' => ['2001:db8:1::25', ['2001:db8:1::/64'], true];
-        yield 'IPv6 の CIDR の外' => ['2001:db8:2::25', ['2001:db8:1::/64'], false];
-        yield 'IPv4 と IPv6 は混ざらない' => ['192.0.2.10', ['::/0'], false];
-        yield '一覧の2つ目に一致' => ['192.0.2.10', ['198.51.100.0/24', '192.0.2.0/24'], true];
-        yield '空の一覧' => ['192.0.2.10', [], false];
-        yield '読めない項目は無視' => ['192.0.2.10', ['not-an-ip', '192.0.2.10/99', '192.0.2.10/x'], false];
-        yield '読めないアドレス' => ['', ['0.0.0.0/0'], false];
+        yield '/0 covers everything' => ['203.0.113.9', ['0.0.0.0/0'], true];
+        yield 'inside an IPv6 CIDR range' => ['2001:db8:1::25', ['2001:db8:1::/64'], true];
+        yield 'outside an IPv6 CIDR range' => ['2001:db8:2::25', ['2001:db8:1::/64'], false];
+        yield 'IPv4 and IPv6 never match each other' => ['192.0.2.10', ['::/0'], false];
+        yield 'matches the second item of the list' => ['192.0.2.10', ['198.51.100.0/24', '192.0.2.0/24'], true];
+        yield 'empty list' => ['192.0.2.10', [], false];
+        yield 'unreadable items are ignored' => ['192.0.2.10', ['not-an-ip', '192.0.2.10/99', '192.0.2.10/x'], false];
+        yield 'unreadable address' => ['', ['0.0.0.0/0'], false];
     }
 
     /** @param list<string> $ranges */

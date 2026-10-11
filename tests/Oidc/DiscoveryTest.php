@@ -34,7 +34,7 @@ final class DiscoveryTest extends TestCase
         self::assertSame(TestIdp::ISSUER . '/token', $first->tokenEndpoint);
         self::assertSame(['client_secret_basic', 'client_secret_post'], $first->tokenEndpointAuthMethods);
         self::assertEquals($first, $second);
-        self::assertSame(1, $http->countRequestsTo(self::URL), '2回目はキャッシュから返す');
+        self::assertSame(1, $http->countRequestsTo(self::URL), 'the second call is served from the cache');
     }
 
     public function testDefaultsAuthMethodToSecretBasic(): void
@@ -67,11 +67,11 @@ final class DiscoveryTest extends TestCase
 
         try {
             (new Discovery($http, new ArrayCache()))->fetch('http://idp.example.com');
-            self::fail('http の issuer を受け入れた');
+            self::fail('accepted an http issuer');
         } catch (OidcException $e) {
             self::assertStringContainsString('https', $e->getMessage());
         }
-        self::assertSame([], $http->requests, '通信する前に弾く');
+        self::assertSame([], $http->requests, 'rejected before any request');
     }
 
     public function testRejectsHttpEndpointInHttpsDocument(): void

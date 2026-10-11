@@ -31,7 +31,7 @@ final class ClaimPathTest extends TestCase
     public function testReadsTopLevelArrayAndString(): void
     {
         self::assertSame(['staff', 'editors'], ClaimPath::values(self::CLAIMS, 'groups'));
-        self::assertSame(['admin'], ClaimPath::values(self::CLAIMS, 'role'), '文字列は1要素の一覧として扱う');
+        self::assertSame(['admin'], ClaimPath::values(self::CLAIMS, 'role'), 'a string counts as a one-element list');
     }
 
     public function testResolvesKeysContainingDots(): void
@@ -47,7 +47,7 @@ final class ClaimPathTest extends TestCase
         self::assertSame([], ClaimPath::values(self::CLAIMS, ''));
         self::assertSame([], ClaimPath::values(self::CLAIMS, 'empty'));
         self::assertSame([], ClaimPath::values(self::CLAIMS, 'number'));
-        self::assertSame([], ClaimPath::values(self::CLAIMS, 'role.deeper'), '文字列の先は辿れない');
+        self::assertSame([], ClaimPath::values(self::CLAIMS, 'role.deeper'), 'nothing can be followed beyond a string');
     }
 
     public function testKeepsOnlyNonEmptyStringsFromArrays(): void

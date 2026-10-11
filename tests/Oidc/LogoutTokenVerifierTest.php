@@ -64,14 +64,14 @@ final class LogoutTokenVerifierTest extends TestCase
     /** @return iterable<string, array{array<string, mixed>, string}> */
     public static function invalidTokens(): iterable
     {
-        yield 'iss が違う' => [['iss' => 'https://evil.example.com'], 'iss'];
-        yield 'aud が違う' => [['aud' => 'other-client'], 'aud'];
-        yield 'iat が無い' => [['iat' => null], 'iat'];
-        yield 'events が無い' => [['events' => null], 'event'];
-        yield 'events に別のイベントしか無い' => [['events' => ['https://example.com/other' => []]], 'event'];
-        yield 'nonce がある' => [['nonce' => 'n'], 'nonce'];
-        yield 'sub も sid も無い' => [['sub' => null, 'sid' => null], 'neither sub nor sid'];
-        yield '期限切れ' => [['exp' => TestIdp::NOW - 61], 'cannot be verified'];
+        yield 'wrong iss' => [['iss' => 'https://evil.example.com'], 'iss'];
+        yield 'wrong aud' => [['aud' => 'other-client'], 'aud'];
+        yield 'no iat' => [['iat' => null], 'iat'];
+        yield 'no events' => [['events' => null], 'event'];
+        yield 'events has only another event' => [['events' => ['https://example.com/other' => []]], 'event'];
+        yield 'has a nonce' => [['nonce' => 'n'], 'nonce'];
+        yield 'neither sub nor sid' => [['sub' => null, 'sid' => null], 'neither sub nor sid'];
+        yield 'expired' => [['exp' => TestIdp::NOW - 61], 'cannot be verified'];
     }
 
     /** @param array<string, mixed> $overrides */
@@ -86,7 +86,7 @@ final class LogoutTokenVerifierTest extends TestCase
 
     public function testRejectsIdTokenPresentedAsLogoutToken(): void
     {
-        // ログイン時の ID Token を流用して、他人をログアウトさせることはできない
+        // the ID Token of a sign-in cannot be reused to log someone out
         $this->expectException(OidcException::class);
 
         self::verifier()->verify(self::$idp->idToken(), TestIdp::NOW);

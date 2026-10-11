@@ -9,7 +9,7 @@ use Firebase\JWT\JWT;
 use LoginOIDC\Oidc\Base64Url;
 use LoginOIDC\Oidc\ProviderMetadata;
 
-/** テスト用の IdP。鍵を持ち、ID Token に署名し、Discovery 文書と JWKS を作る。 */
+/** A provider for tests. It holds a key, signs ID Tokens, and makes the discovery document and the JWKS. */
 final class TestIdp
 {
     public const ISSUER = 'https://idp.example.com/realms/test';
@@ -22,7 +22,7 @@ final class TestIdp
     {
         $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
         if ($key === false) {
-            throw new \RuntimeException('テスト用の鍵を作れない: ' . openssl_error_string());
+            throw new \RuntimeException('cannot create the test key: ' . openssl_error_string());
         }
         $this->privateKey = $key;
     }
@@ -48,14 +48,14 @@ final class TestIdp
     }
 
     /**
-     * @param  bool $withAlg false にすると、alg を持たない JWK を返す（そういう IdP がある）
+     * @param  bool $withAlg false returns a JWK without alg (some providers do that)
      * @return array{keys: list<array<string, string>>}
      */
     public function jwks(bool $withAlg = true): array
     {
         $details = openssl_pkey_get_details($this->privateKey);
         if ($details === false) {
-            throw new \RuntimeException('テスト用の鍵を読めない');
+            throw new \RuntimeException('cannot read the test key');
         }
         $jwk = [
             'kty' => 'RSA',
@@ -69,9 +69,9 @@ final class TestIdp
     }
 
     /**
-     * 既定では検証を通る ID Token。上書きで壊して使う。
+     * An ID Token that verifies by default. Break it with the overrides.
      *
-     * @param array<string, mixed> $overrides null を渡した claim は取り除く
+     * @param array<string, mixed> $overrides a claim given as null is removed
      */
     public function idToken(array $overrides = [], string $nonce = 'nonce-1'): string
     {
@@ -90,9 +90,9 @@ final class TestIdp
     }
 
     /**
-     * 既定では検証を通る Logout Token。
+     * A Logout Token that verifies by default.
      *
-     * @param array<string, mixed> $overrides null を渡した claim は取り除く
+     * @param array<string, mixed> $overrides a claim given as null is removed
      */
     public function logoutToken(array $overrides = []): string
     {

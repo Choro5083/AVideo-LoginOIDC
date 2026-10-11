@@ -46,7 +46,7 @@ final class KeycloakDirectoryTest extends TestCase
         self::assertSame(
             'https://idp.example.com/auth/admin/realms/test',
             KeycloakDirectory::adminUrlFromIssuer('https://idp.example.com/auth/realms/test'),
-            '古い Keycloak の /auth 付きの URL',
+            'URL of an older Keycloak, with /auth',
         );
         self::assertSame('', KeycloakDirectory::adminUrlFromIssuer('https://accounts.example.com'));
     }
@@ -67,7 +67,7 @@ final class KeycloakDirectoryTest extends TestCase
         self::assertSame('Bob Uploader', $user->name);
         self::assertSame('bob@example.com', $user->email);
         self::assertTrue($user->emailVerified);
-        self::assertSame(['uploaders', '/staff/uploaders'], $user->roleValues, '名前とパスの両方');
+        self::assertSame(['uploaders', '/staff/uploaders'], $user->roleValues, 'both the names and the paths');
         self::assertSame('Bearer token-1', $http->requests[1]['headers']['Authorization']);
     }
 
@@ -94,10 +94,10 @@ final class KeycloakDirectoryTest extends TestCase
     /** @return iterable<string, array{int}> */
     public static function failureStatuses(): iterable
     {
-        yield '権限が無い' => [403];
-        yield 'トークンが無効' => [401];
-        yield 'サーバのエラー' => [500];
-        yield '一時的に使えない' => [503];
+        yield 'no permission' => [403];
+        yield 'invalid token' => [401];
+        yield 'server error' => [500];
+        yield 'temporarily unavailable' => [503];
     }
 
     #[DataProvider('failureStatuses')]
@@ -112,7 +112,7 @@ final class KeycloakDirectoryTest extends TestCase
 
     public function testUnreachableApiIsAFailure(): void
     {
-        // 応答を用意していない URL は、接続できないのと同じ扱い（FakeHttpClient が HttpException を投げる）
+        // a URL without a prepared response behaves like a failed connection (FakeHttpClient throws HttpException)
         [$directory] = self::directory([]);
 
         $this->expectException(SyncException::class);
@@ -149,7 +149,7 @@ final class KeycloakDirectoryTest extends TestCase
 
     public function testExplainsMissingPermissionForClientRoles(): void
     {
-        // view-clients が無いと、client の一覧が空で返る
+        // without view-clients the list of clients comes back empty
         [$directory] = self::directory([
             self::ADMIN . '/users/u1' => FakeHttpClient::json(self::USER),
             self::ADMIN . '/users/u1/groups?briefRepresentation=true&max=1000' => self::list([]),

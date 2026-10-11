@@ -9,33 +9,33 @@ use LoginOIDC\AVideo\Translations;
 use PHPUnit\Framework\TestCase;
 
 /**
- * 翻訳の漏れを見つける。英語の文言がキーなので、コードの文言を直したのに言語のファイルを
- * 直し忘れると、その文言だけ英語のまま出る。気づきにくいので、ここで確かめる。
+ * Finds missing translations. The English text is the key, so changing a text in the code
+ * without updating the language file leaves just that text in English. That is easy to miss, so it is checked here.
  */
 final class TranslationsTest extends TestCase
 {
     private const PLUGIN = __DIR__ . '/../LoginOIDC';
 
-    /** 文字列リテラル（シングルクォート）の中身に一致する */
+    /** matches the content of a single-quoted string literal */
     private const LITERAL = '\'((?:[^\'\\\\]|\\\\.)*)\'';
 
     /**
-     * コードの中の、翻訳される英語の文言をすべて集める。
+     * Collects every English text in the code that gets translated.
      *
      * @return list<string>
      */
     private static function textsInCode(): array
     {
         $patterns = [
-            // 翻訳の関数に直接渡している文言
+            // texts passed straight to a translation function
             '/(?:self::t|self::html|LoginOIDC::t|\$text|\b__)\(\s*' . self::LITERAL . '/',
-            // 検査結果のひな形（2つ目の引数）
+            // templates of findings (the second argument)
             '/Finding::(?:error|warning)\(\s*\'[^\']*\',\s*' . self::LITERAL . '/',
-            // 利用者に見せる失敗の文言（loginOidcFail の3つ目の引数と、その既定値）
+            // failure texts shown to the user (third argument of loginOidcFail, and its default)
             '/loginOidcFail\([^;]*,\s*' . self::LITERAL . '\s*\);/',
             '/string \$userMessage = ' . self::LITERAL . '/',
         ];
-        $texts = ['error', 'warning']; // 検査結果の種別。変数で渡しているので、ここに書く
+        $texts = ['error', 'warning']; // levels of findings. They are passed in a variable, so they are listed here
 
         $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(self::PLUGIN, \FilesystemIterator::SKIP_DOTS));
         foreach ($files as $file) {
@@ -47,12 +47,12 @@ final class TranslationsTest extends TestCase
                 preg_match_all($pattern, $source, $matches);
                 array_push($texts, ...array_map('stripslashes', $matches[1]));
             }
-            // 設定項目の名前と説明（helpTexts の 'item' => ['name', 'description'] の行）
+            // names and descriptions of settings (the 'item' => ['name', 'description'] lines of helpTexts)
             preg_match_all('/^\s*\'\w+\' => \[' . self::LITERAL . ', ' . self::LITERAL . '\],$/m', $source, $matches);
             array_push($texts, ...array_map('stripslashes', $matches[1]), ...array_map('stripslashes', $matches[2]));
         }
 
-        // 「%s」は値をそのまま出すだけのひな形で、訳すものが無い。
+        // "%s" is a template that only prints a value. There is nothing to translate.
         return array_values(array_unique(array_filter($texts, static fn (string $t): bool => $t !== '' && $t !== '%s')));
     }
 
@@ -66,7 +66,7 @@ final class TranslationsTest extends TestCase
     {
         $texts = self::textsInCode();
 
-        // 集め方が壊れて「漏れなし」に見えるのを防ぐ。代表的な文言が拾えていることを確かめる。
+        // Guards against a broken collector that makes everything look covered: some known texts must be found.
         self::assertContains('Issuer', $texts);
         self::assertContains('Check settings', $texts);
         self::assertContains('User group %s does not exist.', $texts);
@@ -78,20 +78,20 @@ final class TranslationsTest extends TestCase
     public function testJapaneseCoversEveryTextInTheCode(): void
     {
         $japanese = self::locale('ja_JP');
-        // 英語と日本語で同じになる語（固有の名前）は、訳を置かなくてよい。
+        // Terms that are the same in English and Japanese (proper names) need no entry.
         $sameInBoth = ['Issuer', 'Client ID', 'Client secret', 'RP-Initiated Logout', 'Back-Channel Logout'];
 
         $missing = array_values(array_diff(self::textsInCode(), array_keys($japanese), $sameInBoth));
 
-        self::assertSame([], $missing, 'locale/ja_JP.php に訳が無い文言');
+        self::assertSame([], $missing, 'texts without a translation in locale/ja_JP.php');
     }
 
     public function testJapaneseHasNoStaleEntries(): void
     {
-        // コードから消えた文言の訳が残っていないか。'Login with SSO' は設定の既定値で、変数で渡している。
+        // No translations left over for texts that are gone from the code. 'Login with SSO' is a setting default, passed in a variable.
         $stale = array_values(array_diff(array_keys(self::locale('ja_JP')), self::textsInCode(), ['Login with SSO']));
 
-        self::assertSame([], $stale, 'コードに無い文言の訳が locale/ja_JP.php に残っている');
+        self::assertSame([], $stale, 'locale/ja_JP.php has translations for texts that are not in the code');
     }
 
     public function testPlaceholdersMatchBetweenLanguages(): void
@@ -100,8 +100,8 @@ final class TranslationsTest extends TestCase
             preg_match_all('/%[sd]/', $english, $inEnglish);
             preg_match_all('/%[sd]/', $japanese, $inJapanese);
 
-            // 並びまで同じでなければならない（値は順番に埋められる）。
-            self::assertSame($inEnglish[0], $inJapanese[0], "埋め込む値の数か並びが違う: {$english}");
+            // Even the order must match (the values are filled in order).
+            self::assertSame($inEnglish[0], $inJapanese[0], "number or order of placeholders differs: {$english}");
         }
     }
 
@@ -110,10 +110,10 @@ final class TranslationsTest extends TestCase
         $directory = self::PLUGIN . '/locale';
 
         self::assertSame("{$directory}/ja_JP.php", Translations::fileFor($directory, 'ja_JP'));
-        self::assertSame("{$directory}/ja_JP.php", Translations::fileFor($directory, 'ja'), '言語の部分だけでも見つける');
-        self::assertNull(Translations::fileFor($directory, 'en_US'), '英語はコードの文言をそのまま使う');
+        self::assertSame("{$directory}/ja_JP.php", Translations::fileFor($directory, 'ja'), 'the language part alone is enough');
+        self::assertNull(Translations::fileFor($directory, 'en_US'), 'English uses the texts in the code as they are');
         self::assertNull(Translations::fileFor($directory, 'xx_YY'));
         self::assertNull(Translations::fileFor($directory, ''));
-        self::assertNull(Translations::fileFor($directory, '../../etc/passwd'), 'パスとして使える文字は受け付けない');
+        self::assertNull(Translations::fileFor($directory, '../../etc/passwd'), 'characters usable in a path are refused');
     }
 }

@@ -10,8 +10,8 @@ use LoginOIDC\Settings;
 final class SettingsFactory
 {
     /**
-     * 既定値に相当するデータオブジェクト。選択肢と複数行テキストは、
-     * AVideo が保存する形（{type, value}）にしてある。
+     * A data object equal to the defaults. Selects and multi-line texts are in the
+     * shape AVideo stores them in ({type, value}).
      *
      * @param array<string, mixed> $overrides
      */
@@ -65,7 +65,7 @@ final class SettingsFactory
     }
 
     /**
-     * 複数行テキストと選択肢の項目は、値だけを渡せば AVideo が保存する形に包む。
+     * For multi-line texts and selects, pass just the value: it is wrapped the way AVideo stores it.
      *
      * @param array<string, mixed> $overrides
      */

@@ -13,25 +13,25 @@ use LoginOIDC\User\LocalUser;
 use LoginOIDC\User\NewUser;
 use LoginOIDC\User\UserDirectory;
 
-/** ユーザと対応を配列で持つ。UserDirectory、IdentityStore、SessionRevoker を兼ねる。 */
+/** Keeps users and links in arrays. Serves as UserDirectory, IdentityStore and SessionRevoker. */
 final class InMemoryUsers implements UserDirectory, IdentityStore, SessionRevoker
 {
     /** @var array<int, array{username: string, name: string, email: string, emailVerified: bool, active: bool, flags: array<string, bool>, groups: list<int>}> */
     public array $users = [];
 
-    /** @var array<string, int> "issuer\nsub" → ユーザの ID */
+    /** @var array<string, int> "issuer\nsub" → user ID */
     public array $links = [];
 
     /** @var list<int> */
     public array $logins = [];
 
-    /** @var list<int> 同期が無効化したユーザ */
+    /** @var list<int> users the sync disabled */
     public array $disabledBySync = [];
 
-    /** @var array<int, int> ユーザの ID → 全セッションを終わらせた時刻 */
+    /** @var array<int, int> user ID → when every session was ended */
     public array $revoked = [];
 
-    /** link() の直前に1度だけ呼ぶ。同時に来た別のリクエストが先に対応を作った状況を再現する。 */
+    /** Called once just before link(). Reproduces another request creating the link first. */
     public ?\Closure $beforeLink = null;
 
     private ?\Closure $committedElsewhere = null;
@@ -163,7 +163,7 @@ final class InMemoryUsers implements UserDirectory, IdentityStore, SessionRevoke
             return $work();
         } catch (\Throwable $e) {
             [$this->users, $this->links, $this->nextId] = $snapshot;
-            // 別のリクエストが確定させた分は、こちらの取り消しでは消えない。
+            // What another request committed is not undone by this rollback.
             if ($this->committedElsewhere !== null) {
                 ($this->committedElsewhere)();
                 $this->committedElsewhere = null;

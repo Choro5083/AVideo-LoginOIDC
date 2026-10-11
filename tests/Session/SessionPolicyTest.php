@@ -37,13 +37,13 @@ final class SessionPolicyTest extends TestCase
         self::assertNotNull(SessionPolicy::reasonToEnd(self::marker(1000), new SessionState(true, 1001, false)));
         self::assertNotNull(
             SessionPolicy::reasonToEnd(self::marker(1000), new SessionState(true, 1000, false)),
-            '同じ秒は、安全な側に倒して終わらせる',
+            'the same second ends too, to stay on the safe side',
         );
     }
 
     public function testKeepsSessionStartedAfterTheUserWideLogout(): void
     {
-        // 全セッションを終わらせた後に、ログインし直したセッション
+        // a session started after every session was ended
         self::assertNull(SessionPolicy::reasonToEnd(self::marker(1002), new SessionState(true, 1001, false)));
     }
 

@@ -46,18 +46,18 @@ final class AutoRedirectPolicyTest extends TestCase
     public static function requestsLeftAlone(): iterable
     {
         yield 'POST' => [self::request(method: 'POST')];
-        yield 'JavaScript からの通信' => [self::request(ajax: true)];
-        yield 'JSON を求めるリクエスト' => [self::request(accept: 'application/json')];
-        yield 'Accept が無い（curl、Encoder など）' => [self::request(accept: '')];
-        yield '動画や画像を求めるリクエスト' => [self::request(accept: 'video/*;q=0.9,*/*;q=0.5')];
+        yield 'request from JavaScript' => [self::request(ajax: true)];
+        yield 'request asking for JSON' => [self::request(accept: 'application/json')];
+        yield 'no Accept header (curl, the Encoder and so on)' => [self::request(accept: '')];
+        yield 'request asking for video or images' => [self::request(accept: 'video/*;q=0.9,*/*;q=0.5')];
         yield '*.json.php' => [self::request('/objects/videos.json.php')];
-        yield '本体のログイン画面' => [self::request('/view/user.php')];
-        yield '本体のログイン処理' => [self::request('/objects/login.json.php')];
-        yield '本体のログアウト' => [self::request('/objects/logoff.php')];
-        yield 'プラグインのログインの入口' => [self::request('/plugin/LoginOIDC/login.php')];
-        yield 'プラグインのコールバック' => [self::request('/plugin/LoginOIDC/callback.php')];
-        yield 'サブディレクトリに置いた AVideo のログイン画面' => [self::request('/avideo/view/user.php')];
-        yield 'Encoder のアドレス' => [self::request(remoteAddress: '192.0.2.10')];
+        yield 'sign-in page of AVideo' => [self::request('/view/user.php')];
+        yield 'sign-in handler of AVideo' => [self::request('/objects/login.json.php')];
+        yield 'logout of AVideo' => [self::request('/objects/logoff.php')];
+        yield 'sign-in entry point of the plugin' => [self::request('/plugin/LoginOIDC/login.php')];
+        yield 'callback of the plugin' => [self::request('/plugin/LoginOIDC/callback.php')];
+        yield 'sign-in page of an AVideo installed in a subdirectory' => [self::request('/avideo/view/user.php')];
+        yield 'address of the Encoder' => [self::request(remoteAddress: '192.0.2.10')];
     }
 
     #[DataProvider('requestsLeftAlone')]

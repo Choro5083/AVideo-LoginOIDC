@@ -65,7 +65,7 @@ final class IdTokenVerifierTest extends TestCase
 
     public function testToleratesClockSkewWithinTheLimit(): void
     {
-        // 期限を 30 秒過ぎているが、許容は 60 秒
+        // 30 seconds past the expiry, with 60 seconds tolerated
         $claims = self::verify(self::$idp->idToken(), now: TestIdp::NOW + 330);
 
         self::assertSame('user-1', $claims['sub']);
@@ -74,19 +74,19 @@ final class IdTokenVerifierTest extends TestCase
     /** @return iterable<string, array{array<string, mixed>, string}> */
     public static function invalidClaims(): iterable
     {
-        yield 'iss が違う' => [['iss' => 'https://evil.example.com'], 'iss'];
-        yield 'aud が違う' => [['aud' => 'other-client'], 'aud'];
-        yield 'aud が複数で azp が無い' => [['aud' => [TestIdp::CLIENT_ID, 'other']], 'azp'];
-        yield 'azp が別の client' => [['azp' => 'other-client'], 'azp'];
-        yield 'nonce が違う' => [['nonce' => 'attacker'], 'nonce'];
-        yield 'nonce が無い' => [['nonce' => null], 'nonce'];
-        yield 'sub が無い' => [['sub' => null], 'sub'];
-        yield 'sub が空' => [['sub' => ''], 'sub'];
-        yield 'sub が長すぎる' => [['sub' => str_repeat('a', 256)], 'sub'];
-        yield 'exp が無い' => [['exp' => null], 'exp'];
-        yield 'iat が無い' => [['iat' => null], 'iat'];
-        yield '期限切れ' => [['exp' => TestIdp::NOW - 61], 'cannot be verified'];
-        yield '未来に発行された' => [['iat' => TestIdp::NOW + 61], 'cannot be verified'];
+        yield 'wrong iss' => [['iss' => 'https://evil.example.com'], 'iss'];
+        yield 'wrong aud' => [['aud' => 'other-client'], 'aud'];
+        yield 'several audiences and no azp' => [['aud' => [TestIdp::CLIENT_ID, 'other']], 'azp'];
+        yield 'azp is another client' => [['azp' => 'other-client'], 'azp'];
+        yield 'wrong nonce' => [['nonce' => 'attacker'], 'nonce'];
+        yield 'no nonce' => [['nonce' => null], 'nonce'];
+        yield 'no sub' => [['sub' => null], 'sub'];
+        yield 'empty sub' => [['sub' => ''], 'sub'];
+        yield 'sub too long' => [['sub' => str_repeat('a', 256)], 'sub'];
+        yield 'no exp' => [['exp' => null], 'exp'];
+        yield 'no iat' => [['iat' => null], 'iat'];
+        yield 'expired' => [['exp' => TestIdp::NOW - 61], 'cannot be verified'];
+        yield 'issued in the future' => [['iat' => TestIdp::NOW + 61], 'cannot be verified'];
     }
 
     /** @param array<string, mixed> $overrides */
@@ -116,11 +116,11 @@ final class IdTokenVerifierTest extends TestCase
 
         try {
             self::verify($token, self::verifier($http));
-            self::fail('HS256 を受け入れた');
+            self::fail('accepted HS256');
         } catch (OidcException $e) {
             self::assertStringContainsString('HS256', $e->getMessage());
         }
-        self::assertSame([], $http->requests, '鍵を取りに行く前に弾く');
+        self::assertSame([], $http->requests, 'rejected before fetching any key');
     }
 
     public function testRejectsUnsignedToken(): void
@@ -136,7 +136,7 @@ final class IdTokenVerifierTest extends TestCase
 
     public function testRefetchesJwksOnceWhenKidIsUnknown(): void
     {
-        // 1回目は古い鍵、取り直すと新しい鍵が返る（IdP が鍵を入れ替えた直後）
+        // the old key first, the new key on refetch (right after the provider rotated its keys)
         $old = new TestIdp('old-key');
         $http = new FakeHttpClient([self::JWKS_URI => [
             FakeHttpClient::json($old->jwks()),
@@ -159,16 +159,16 @@ final class IdTokenVerifierTest extends TestCase
 
         try {
             self::verify(self::$idp->idToken(), self::verifier($http));
-            self::fail('知らない鍵のトークンを受け入れた');
+            self::fail('accepted a token signed with an unknown key');
         } catch (OidcException $e) {
             self::assertStringContainsString('key-1', $e->getMessage());
         }
-        self::assertSame(2, $http->countRequestsTo(self::JWKS_URI), '取り直すのは1度だけ');
+        self::assertSame(2, $http->countRequestsTo(self::JWKS_URI), 'refetched only once');
     }
 
     public function testDoesNotRefetchJwksAgainRightAfterARefetch(): void
     {
-        // 知らない kid のトークンを送り続けても、IdP への取り直しは間隔を空ける
+        // tokens with unknown kids keep coming, but refetches from the provider are spaced out
         $old = new TestIdp('old-key');
         $http = new FakeHttpClient([self::JWKS_URI => [
             FakeHttpClient::json($old->jwks()),
@@ -179,13 +179,13 @@ final class IdTokenVerifierTest extends TestCase
         foreach ([1, 2, 3] as $attempt) {
             try {
                 self::verify(self::$idp->idToken(), $verifier);
-                self::fail('知らない鍵のトークンを受け入れた');
+                self::fail('accepted a token signed with an unknown key');
             } catch (OidcException) {
-                // 想定どおり
+                // expected
             }
         }
 
-        self::assertSame(2, $http->countRequestsTo(self::JWKS_URI), '最初の取得と、取り直しの1回だけ');
+        self::assertSame(2, $http->countRequestsTo(self::JWKS_URI), 'only the first fetch and one refetch');
     }
 
     public function testIgnoresEncryptionKeys(): void
@@ -210,7 +210,7 @@ final class IdTokenVerifierTest extends TestCase
         try {
             self::verify(self::$idp->idToken(['exp' => TestIdp::NOW - 1000]));
         } catch (OidcException) {
-            // 失敗しても元に戻ることを確かめる
+            // they must be restored after a failure too
         }
 
         self::assertSame(7, JWT::$leeway);

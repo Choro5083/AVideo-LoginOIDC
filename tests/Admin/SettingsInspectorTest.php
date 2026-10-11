@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 final class SettingsInspectorTest extends TestCase
 {
     /**
-     * 問題のない設定。ここから1か所ずつ崩して確かめる。
+     * A configuration without problems. Each case breaks it in one place.
      */
     private const GOOD = [
         'rolesClaimPath' => 'groups',
@@ -36,7 +36,7 @@ final class SettingsInspectorTest extends TestCase
 
     /**
      * @param  array<string, mixed> $overrides
-     * @return list<string> 「level setting」の一覧
+     * @return list<string> list of "level setting"
      */
     private static function inspect(array $overrides = []): array
     {
@@ -71,34 +71,34 @@ final class SettingsInspectorTest extends TestCase
     /** @return iterable<string, array{array<string, mixed>, string}> */
     public static function problems(): iterable
     {
-        yield 'issuer が URL でない' => [['issuer' => 'idp.example.com'], 'error issuer'];
-        yield 'issuer にクエリがある' => [['issuer' => 'https://idp.example.com/?a=1'], 'error issuer'];
-        yield 'issuer が http' => [['issuer' => 'http://idp.example.com'], 'error issuer'];
-        yield 'http を許している' => [['issuer' => 'http://idp.example.com', 'allowInsecureHttp' => true], 'warning allowInsecureHttp'];
-        yield 'scope に openid が無い' => [['scopes' => 'profile email'], 'error scopes'];
-        yield 'シークレットがどこにも無い' => [['clientSecret' => ''], 'error clientSecret'];
-        yield '管理するフラグがあるのに claim のパスが無い' => [['rolesClaimPath' => ''], 'warning rolesClaimPath'];
-        yield '対応表があるのに管理するフラグが無い' => [['managedFlags' => ''], 'warning managedFlags'];
-        yield '対応表が管理対象でないフラグを指す' => [
+        yield 'issuer is not a URL' => [['issuer' => 'idp.example.com'], 'error issuer'];
+        yield 'issuer has a query' => [['issuer' => 'https://idp.example.com/?a=1'], 'error issuer'];
+        yield 'issuer uses http' => [['issuer' => 'http://idp.example.com'], 'error issuer'];
+        yield 'http is allowed' => [['issuer' => 'http://idp.example.com', 'allowInsecureHttp' => true], 'warning allowInsecureHttp'];
+        yield 'no openid in the scopes' => [['scopes' => 'profile email'], 'error scopes'];
+        yield 'no secret anywhere' => [['clientSecret' => ''], 'error clientSecret'];
+        yield 'managed flags without a claim path' => [['rolesClaimPath' => ''], 'warning rolesClaimPath'];
+        yield 'a mapping without managed flags' => [['managedFlags' => ''], 'warning managedFlags'];
+        yield 'the mapping points at an unmanaged flag' => [
             ['flagMapping' => '{"admins": ["isAdmin"], "uploaders": ["canUpload"], "s": ["canStream"]}'],
             'warning flagMapping',
         ];
-        yield '管理するフラグに付ける条件が無い（全員から外れる）' => [
+        yield 'nothing grants a managed flag (removed from everyone)' => [
             ['flagMapping' => '{"uploaders": ["canUpload"]}'],
             'warning flagMapping',
         ];
-        yield '存在しない user group' => [['managedGroups' => '3, 99', 'groupMapping' => '{"staff": [3]}'], 'error managedGroups'];
-        yield '対応表が管理対象でない group を指す' => [['groupMapping' => '{"staff": [3, 5]}'], 'warning groupMapping'];
-        yield '必要な条件の片方だけ' => [['requiredClaimValues' => ''], 'warning requiredClaimPath'];
-        yield '許可リストが空（入口が無くなる）' => [['nativeLoginAllowlist' => ''], 'warning nativeLoginAllowlist'];
-        yield '許可リストに存在しないユーザ' => [['nativeLoginAllowlist' => "admin\nghost"], 'warning nativeLoginAllowlist'];
-        yield 'Encoder のアドレスが読めない' => [['encoderAddresses' => 'encoder.example.com'], 'error encoderAddresses'];
-        yield 'Encoder のアドレスが全アドレス' => [['encoderAddresses' => '0.0.0.0/0'], 'error encoderAddresses'];
-        yield '制限しているのに Encoder のアドレスが無い' => [['encoderAddresses' => ''], 'warning encoderAddresses'];
-        yield '同期の client が無い' => [['syncClientId' => ''], 'error syncClientId'];
-        yield 'Admin API の URL を導けない' => [['issuer' => 'https://accounts.example.com'], 'error syncAdminUrl'];
-        yield 'client role を読むのに client が無い' => [['syncRoleSource' => 'clientRoles'], 'error syncRoleClientId'];
-        yield 'client role は権限が広い' => [
+        yield 'user group that does not exist' => [['managedGroups' => '3, 99', 'groupMapping' => '{"staff": [3]}'], 'error managedGroups'];
+        yield 'the mapping points at an unmanaged group' => [['groupMapping' => '{"staff": [3, 5]}'], 'warning groupMapping'];
+        yield 'only one half of the requirement' => [['requiredClaimValues' => ''], 'warning requiredClaimPath'];
+        yield 'empty allowlist (no way in)' => [['nativeLoginAllowlist' => ''], 'warning nativeLoginAllowlist'];
+        yield 'allowlist names a user that does not exist' => [['nativeLoginAllowlist' => "admin\nghost"], 'warning nativeLoginAllowlist'];
+        yield 'unreadable Encoder address' => [['encoderAddresses' => 'encoder.example.com'], 'error encoderAddresses'];
+        yield 'Encoder address covers every address' => [['encoderAddresses' => '0.0.0.0/0'], 'error encoderAddresses'];
+        yield 'restricted without an Encoder address' => [['encoderAddresses' => ''], 'warning encoderAddresses'];
+        yield 'no sync client' => [['syncClientId' => ''], 'error syncClientId'];
+        yield 'Admin API URL cannot be derived' => [['issuer' => 'https://accounts.example.com'], 'error syncAdminUrl'];
+        yield 'client roles without a client' => [['syncRoleSource' => 'clientRoles'], 'error syncRoleClientId'];
+        yield 'client roles need broad permissions' => [
             ['syncRoleSource' => 'clientRoles', 'syncRoleClientId' => 'avideo'],
             'warning syncRoleSource',
         ];

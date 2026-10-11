@@ -20,7 +20,7 @@ final class TokenClientTest extends TestCase
 
     public function testPkceMatchesRfc7636Example(): void
     {
-        // RFC 7636 の付録 B の値
+        // the values of RFC 7636, appendix B
         $pkce = Pkce::fromVerifier('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk');
 
         self::assertSame('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', $pkce->challenge);
@@ -45,7 +45,7 @@ final class TokenClientTest extends TestCase
         self::assertSame('x.y.z', $tokens->idToken);
         self::assertSame('at', $tokens->accessToken);
         $request = $http->requests[0];
-        // RFC 6749 の 2.3.1 節: Base64 にする前にフォームの形式でエンコードする
+        // RFC 6749, section 2.3.1: form-encode before Base64
         self::assertSame('Basic ' . base64_encode('my+client:p%40ss%3Aword%2F%2B'), $request['headers']['Authorization']);
         self::assertSame(
             ['grant_type' => 'authorization_code', 'code' => 'code-1', 'redirect_uri' => 'https://av.example.com/cb', 'code_verifier' => 'verifier-1'],
@@ -74,11 +74,11 @@ final class TokenClientTest extends TestCase
         try {
             (new TokenClient($http, new SecretBasicAuthenticator('avideo', 'secret')))
                 ->exchangeCode(\LoginOIDC\Oidc\ProviderMetadata::fromArray($document), 'c', 'https://av.example.com/cb', 'v');
-            self::fail('IdP が対応していない方式で送った');
+            self::fail('sent with a method the provider does not support');
         } catch (OidcException $e) {
             self::assertStringContainsString('client_secret_basic', $e->getMessage());
         }
-        self::assertSame([], $http->requests, 'シークレットを送る前に止める');
+        self::assertSame([], $http->requests, 'stops before sending the secret');
     }
 
     public function testReportsProviderErrorWithoutLeakingSecret(): void
@@ -91,7 +91,7 @@ final class TokenClientTest extends TestCase
         try {
             (new TokenClient($http, new SecretBasicAuthenticator('avideo', 'top-secret')))
                 ->exchangeCode(TestIdp::metadata(), 'code-1', 'https://av.example.com/cb', 'verifier-1');
-            self::fail('エラーの応答を成功として扱った');
+            self::fail('treated an error response as success');
         } catch (OidcException $e) {
             self::assertStringContainsString('invalid_grant', $e->getMessage());
             self::assertStringContainsString('Code not valid', $e->getMessage());

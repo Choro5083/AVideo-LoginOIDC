@@ -33,7 +33,7 @@ final class SynchronizerTest extends TestCase
         $this->remote = new FakeRemoteDirectory();
     }
 
-    /** IdP と AVideo の両方にいる、紐付いたユーザを作る。 */
+    /** Creates a linked user that exists both at the provider and in AVideo. */
     private function linked(string $username, array $roles = [], bool $active = true): int
     {
         $id = $this->store->add($username, $active);
@@ -69,9 +69,9 @@ final class SynchronizerTest extends TestCase
         self::assertFalse($this->store->users[$disabled]['active']);
         self::assertTrue($this->store->users[$kept]['active']);
         self::assertSame([$deleted, $disabled], $this->store->disabledBySync);
-        self::assertSame([$deleted => self::NOW, $disabled => self::NOW], $this->store->revoked, 'セッションも終わらせる');
+        self::assertSame([$deleted => self::NOW, $disabled => self::NOW], $this->store->revoked, 'the sessions are ended too');
         self::assertSame(['deleted (deleted at the provider)', 'disabled (disabled at the provider)'], $report->disabled);
-        self::assertArrayHasKey($deleted, $this->store->users, '物理削除はしない');
+        self::assertArrayHasKey($deleted, $this->store->users, 'never deleted');
     }
 
     public function testReEnablesOnlyUsersItDisabledItself(): void
@@ -83,7 +83,7 @@ final class SynchronizerTest extends TestCase
         $report = $this->synchronizer()->run(dryRun: false, now: self::NOW);
 
         self::assertTrue($this->store->users[$bySync]['active']);
-        self::assertFalse($this->store->users[$byAdmin]['active'], '管理者が手で無効化したユーザは戻さない');
+        self::assertFalse($this->store->users[$byAdmin]['active'], 'a user an admin disabled by hand stays disabled');
         self::assertSame([], $this->store->disabledBySync);
         self::assertSame(['by-sync'], $report->enabled);
     }
@@ -108,7 +108,7 @@ final class SynchronizerTest extends TestCase
         $this->synchronizer()->run(dryRun: false, now: self::NOW);
 
         self::assertSame('New Name', $this->store->users[$id]['name']);
-        self::assertSame('old@example.com', $this->store->users[$id]['email'], 'IdP 側が空なら上書きしない');
+        self::assertSame('old@example.com', $this->store->users[$id]['email'], 'not overwritten when the provider has it empty');
     }
 
     public function testNeverCreatesUsersOrTouchesUnlinkedOnes(): void
@@ -118,7 +118,7 @@ final class SynchronizerTest extends TestCase
 
         $report = $this->synchronizer()->run(dryRun: false, now: self::NOW);
 
-        self::assertCount(1, $this->store->users, 'IdP にしかいないユーザは作らない');
+        self::assertCount(1, $this->store->users, 'a user that exists only at the provider is not created');
         self::assertTrue($this->store->users[$native]['active']);
         self::assertSame([], $this->store->users[$native]['flags']);
         self::assertSame(0, $report->checked);
@@ -131,7 +131,7 @@ final class SynchronizerTest extends TestCase
 
         $this->synchronizer()->run(dryRun: false, now: self::NOW);
 
-        self::assertTrue($this->store->users[$id]['active'], '設定と違う issuer のユーザは、いないと判断しない');
+        self::assertTrue($this->store->users[$id]['active'], 'a user of another issuer is not taken for gone');
     }
 
     public function testChangesNothingWhenAnyLookupFails(): void
@@ -143,18 +143,18 @@ final class SynchronizerTest extends TestCase
 
         try {
             $this->synchronizer()->run(dryRun: false, now: self::NOW);
-            self::fail('API が失敗したのに同期を続けた');
+            self::fail('the sync went on although the API failed');
         } catch (SyncException) {
-            // 想定どおり
+            // expected
         }
 
-        self::assertTrue($this->store->users[$gone]['active'], '確実に消えたユーザも、この回は無効化しない');
+        self::assertTrue($this->store->users[$gone]['active'], 'even a user that is certainly gone is not disabled in this run');
         self::assertSame([], $this->store->revoked);
     }
 
     public function testRefusesToDisableMoreThanTheConfiguredRatio(): void
     {
-        // 別の realm を向けるなどして、ほぼ全員が「いない」と見えた場合
+        // nearly everyone looks gone, as when the settings point at another realm
         $ids = array_map(fn (int $n): int => $this->linked("user{$n}"), range(1, 10));
         foreach (range(1, 3) as $n) {
             unset($this->remote->users["sub-user{$n}"]);
@@ -162,7 +162,7 @@ final class SynchronizerTest extends TestCase
 
         try {
             $this->synchronizer(['syncMaxDisableRatio' => 20])->run(dryRun: false, now: self::NOW);
-            self::fail('上限を超える無効化を実行した');
+            self::fail('disabled more users than the limit allows');
         } catch (SyncException $e) {
             self::assertStringContainsString('3 of 10', $e->getMessage());
         }
@@ -189,7 +189,7 @@ final class SynchronizerTest extends TestCase
 
         $this->synchronizer(['syncMaxDisableRatio' => 20])->run(dryRun: false, now: self::NOW);
 
-        self::assertFalse($this->store->users[$ids[0]]['active'], '5人中1人はちょうど 20%');
+        self::assertFalse($this->store->users[$ids[0]]['active'], '1 of 5 is exactly 20%');
     }
 
     public function testDryRunReportsButChangesNothing(): void
@@ -232,7 +232,7 @@ final class SynchronizerTest extends TestCase
         $report = $this->synchronizer($settings)->run(dryRun: false, now: self::NOW);
 
         self::assertSame([$loses => self::NOW], $this->store->revoked);
-        self::assertTrue($this->store->users[$loses]['active'], 'アカウントは無効にしない（条件を満たせばまたログインできる）');
+        self::assertTrue($this->store->users[$loses]['active'], 'the account stays enabled (meeting the requirement again lets them back in)');
         self::assertSame(['loses'], $report->sessionsRevoked);
         self::assertTrue($this->store->users[$stays]['active']);
     }

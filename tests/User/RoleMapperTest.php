@@ -51,13 +51,13 @@ final class RoleMapperTest extends TestCase
         self::assertSame(
             ['isAdmin' => false, 'canUpload' => false],
             RoleMapper::flags(SettingsFactory::make(self::ROLES), []),
-            '権限を剥奪されたら、次のログインで落とす',
+            'a removed permission is dropped at the next sign-in',
         );
     }
 
     public function testNeverTouchesUnmanagedFlags(): void
     {
-        // streamer は canStream に対応しているが、canStream は管理対象ではない
+        // streamer maps to canStream, but canStream is not managed
         $flags = RoleMapper::flags(SettingsFactory::make(self::ROLES), self::claims(['streamer']));
 
         self::assertArrayNotHasKey('canStream', $flags);
@@ -76,7 +76,7 @@ final class RoleMapperTest extends TestCase
     {
         [$add, $remove] = RoleMapper::groups(SettingsFactory::make(self::GROUPS), ['groups' => ['editors']]);
 
-        self::assertSame([5], $add, '9 は対応表にあるが管理対象ではないので足さない');
+        self::assertSame([5], $add, '9 is in the mapping but not managed, so it is not added');
         self::assertSame([3, 8], $remove);
     }
 
