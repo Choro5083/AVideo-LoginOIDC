@@ -12,7 +12,7 @@ require_once __DIR__ . '/../../videos/configuration.php';
 require_once __DIR__ . '/bootstrap.php';
 
 loginOidcRequireEnabled();
-enforceRateLimit('loginoidc_login', 30, 300);
+loginOidcRateLimit('loginoidc_login');
 
 // 戻り先は returnTo で受ける。本体は redirectUri という名前の引数を、絶対 URL でなければ捨て、
 // HTML 用にエスケープして書き換える（objects/security.php）ので、その名前は使わない。

@@ -26,6 +26,19 @@ function loginOidcRequireEnabled(): void
     }
 }
 
+/** 同じ接続元からの回数を、設定の上限で制限する。上限が 0 なら制限しない。 */
+function loginOidcRateLimit(string $operation): void
+{
+    try {
+        $limit = LoginOIDC::settings()->loginRateLimit;
+    } catch (InvalidSettingException $e) {
+        loginOidcFail('invalid settings', $e);
+    }
+    if ($limit > 0) {
+        enforceRateLimit($operation, $limit, 300);
+    }
+}
+
 /** @throws InvalidSettingException */
 function loginOidcFlow(): LoginFlow
 {

@@ -87,6 +87,7 @@ class LoginOIDC extends PluginAbstract
         $obj->caCertFile = '';
         $obj->clockSkewSeconds = 60;
         $obj->allowInsecureHttp = false;
+        $obj->loginRateLimit = 60;
 
         // --- ログイン画面 ---
         $obj->buttonLabel = 'Login with SSO';
@@ -225,6 +226,7 @@ class LoginOIDC extends PluginAbstract
             'caCertFile' => ['CA 証明書のファイル', '独自の CA を使う場合のパス。空なら OS の既定を使う'],
             'clockSkewSeconds' => ['時刻のずれの許容（秒）', 'ID Token の exp / iat の検証で許すずれ'],
             'allowInsecureHttp' => ['http の IdP を許す（開発用）', 'issuer とエンドポイントに http を許す。通信を盗み見られるので、本番では使わない'],
+            'loginRateLimit' => ['ログインの回数の上限', '同じ接続元から、5 分間に受け付けるログインの開始とコールバックの回数。0 で制限しない。リバースプロキシの配下では、AVideo 本体でプロキシを信頼する設定をしないと、全員が同じ接続元として数えられる'],
             'buttonLabel' => ['ログインボタンの表示', ''],
             'autoRedirect' => ['未ログインなら IdP へ自動でリダイレクトする', '画面の表示だけが対象。API や動画ファイルは対象外'],
             'createUsers' => ['初回ログイン時にユーザを作る', '無効にすると、事前に紐付けたユーザだけがログインできる'],

@@ -130,6 +130,7 @@ final class SettingsTest extends TestCase
         yield '時刻のずれが範囲外' => [['clockSkewSeconds' => 601], 'clockSkewSeconds'];
         yield '時刻のずれが数値でない' => [['clockSkewSeconds' => 'abc'], 'clockSkewSeconds'];
         yield '割合が範囲外' => [['syncMaxDisableRatio' => 101], 'syncMaxDisableRatio'];
+        yield '回数の上限が負' => [['loginRateLimit' => '-1'], 'loginRateLimit'];
     }
 
     /** @param array<string, mixed> $overrides */

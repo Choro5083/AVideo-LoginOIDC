@@ -55,6 +55,8 @@ $data->clientId = 'avideo';
 $data->clientSecret = 'dev-only-avideo-secret';
 // 開発環境の Keycloak は http で動かしている。
 $data->allowInsecureHttp = true;
+// 結合テストは、同じ接続元から短い間に何十回もログインする。
+$data->loginRateLimit = 0;
 // 権限は group で決める。同期用の client が view-users だけで group を読めるので、
 // ログイン時（claim）と同期（Admin API）で同じ値を使える。
 $data->rolesClaimPath = 'groups';

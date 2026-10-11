@@ -30,6 +30,7 @@ final class SettingsFactory
             'caCertFile' => '',
             'clockSkewSeconds' => 60,
             'allowInsecureHttp' => false,
+            'loginRateLimit' => 60,
             'buttonLabel' => 'Login with SSO',
             'autoRedirect' => false,
             'createUsers' => true,

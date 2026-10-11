@@ -19,7 +19,7 @@ require_once __DIR__ . '/../../videos/configuration.php';
 require_once __DIR__ . '/bootstrap.php';
 
 loginOidcRequireEnabled();
-enforceRateLimit('loginoidc_callback', 30, 300);
+loginOidcRateLimit('loginoidc_callback');
 
 // 保存しておいた値は1度しか使わない。読んだらすぐ消し、同じコールバックの再送を無効にする。
 _session_start();

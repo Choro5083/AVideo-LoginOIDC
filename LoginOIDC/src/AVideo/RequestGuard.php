@@ -150,17 +150,43 @@ final class RequestGuard
         $reason = NativeLoginPolicy::reasonToDeny($settings, new NativeLoginAttempt(
             username: $username,
             linked: $linked,
-            viaCookie: !empty($GLOBALS['justTryToRecreateLoginFromCookie']),
+            viaCookie: self::isRestoringFromCookie(),
             // 転送ヘッダ（X-Forwarded-For）は見ない。送る側が自由に書けるため、Encoder の例外に使えない。
             remoteAddress: (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
         ));
         if ($reason === null) {
+            if ($linked) {
+                // IdP に紐付いたユーザのセッションには、ネイティブログインで始まったものにも印を付ける。
+                // 付けないと、無効化やログアウトの対象から漏れる。本体のログイン処理の途中で、
+                // セッションは開いているので、閉じずに書くだけにする。
+                $_SESSION[self::SESSION_KEY]['marker'] = (new SessionMarker($userId, '', time(), ''))->toArray();
+            }
+
             return;
         }
 
         _error_log("LoginOIDC: native sign-in of user {$username} (id {$userId}) denied: {$reason}", \AVideoLog::$SECURITY);
         // 本体にはログインの前に割り込むフックが無い。成立した直後に取り消す。
         \User::logoff();
+    }
+
+    /**
+     * いまのログインが、Cookie からの復元によるものか。
+     *
+     * 本体は復元を User::recreateLoginFromCookie() で行う。本体が持つ印
+     * （$justTryToRecreateLoginFromCookie）は「復元を試みた」ことを示すだけで、
+     * Cookie が無くても立つ。そのため、ログイン処理を呼んだのが復元の処理かどうかを
+     * 呼び出し元から確かめる。
+     */
+    private static function isRestoringFromCookie(): bool
+    {
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $frame) {
+            if (($frame['function'] ?? '') === 'recreateLoginFromCookie') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function isLogoffRequest(): bool
@@ -178,7 +204,9 @@ final class RequestGuard
     {
         global $global;
 
-        if (!$settings->rpInitiatedLogout) {
+        // ID Token を持たない印は、ネイティブログインで始まったセッションのもの。IdP のセッションとは
+        // 結び付いていないので、IdP へは送らない。
+        if (!$settings->rpInitiatedLogout || $marker->idToken === '') {
             self::clearMarker();
 
             return;

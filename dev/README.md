@@ -88,6 +88,26 @@ docker exec avideo-avideo-1 bash -c "cd /opt/loginoidc && php vendor/bin/phpunit
 
 AVideo 本体の `vendor/bin/phpunit` は使わない。本体に同梱されている PHPUnit は一部のファイルが欠けていて動かない。
 
+## 結合テスト
+
+`dev/e2e/` に、ブラウザと同じ手順を `curl` でたどって結果を検査するシナリオがある。AVideo 本体との接続部分（フックやセッション）は単体テストでは確かめられないので、変更したらこれを流す。
+
+```bash
+export AVIDEO_URL=https://<HOST> KEYCLOAK_URL=http://<HOST>:8081
+export AVIDEO_ENV_FILE=<AVideo の .env のパス> SUDO=sudo   # .env と docker に sudo が要らなければ SUDO は不要
+bash dev/e2e/run-all.sh
+```
+
+| シナリオ | 内容 |
+|---|---|
+| `01-login.sh` | ユーザの作成、権限の反映、コールバックの再送の拒否、戻り先、ログインに必要な条件 |
+| `02-logout.sh` | RP-Initiated Logout、Back-Channel Logout |
+| `03-native.sh` | ネイティブログインの制御、Encoder の例外、Cookie からの復元 |
+| `04-auto-redirect.sh` | 未ログイン時の自動リダイレクト |
+| `05-sync.sh` | Keycloak の同期 |
+
+**`05-sync.sh` は Keycloak のユーザを変更・削除する。** 流し終えたら、Keycloak のコンテナを作り直して元に戻す（「作り直す」を参照）。続けてもう一度流すときも、先に作り直す。
+
 ## 同期を試す
 
 ```bash
