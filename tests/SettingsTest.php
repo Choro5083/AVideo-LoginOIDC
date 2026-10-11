@@ -10,64 +10,17 @@ use LoginOIDC\InvalidSettingException;
 use LoginOIDC\NativeLoginMode;
 use LoginOIDC\Settings;
 use LoginOIDC\SyncRoleSource;
+use LoginOIDC\Tests\Support\SettingsFactory;
 use LoginOIDC\UserFlag;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class SettingsTest extends TestCase
 {
-    /**
-     * 既定値に相当するデータオブジェクト。選択肢と複数行テキストは、
-     * AVideo が保存する形（{type, value}）にしてある。
-     *
-     * @param array<string, mixed> $overrides
-     */
+    /** @param array<string, mixed> $overrides */
     private static function data(array $overrides = []): object
     {
-        $wrap = static fn (mixed $value): object => (object) ['type' => 'textarea', 'value' => $value];
-
-        return (object) array_merge([
-            'issuer' => 'https://idp.example.com/realms/test/',
-            'clientId' => 'avideo',
-            'clientSecret' => 'secret',
-            'clientSecretFile' => '',
-            'clientAuthMethod' => $wrap('client_secret_basic'),
-            'scopes' => 'openid profile email',
-            'useUserInfo' => false,
-            'caCertFile' => '',
-            'clockSkewSeconds' => 60,
-            'allowInsecureHttp' => false,
-            'buttonLabel' => 'Login with SSO',
-            'autoRedirect' => false,
-            'createUsers' => true,
-            'usernameClaim' => 'preferred_username',
-            'nameClaim' => 'name',
-            'emailClaim' => 'email',
-            'updateName' => true,
-            'updateEmail' => true,
-            'updateEmailVerified' => true,
-            'rolesClaimPath' => '',
-            'managedFlags' => '',
-            'flagMapping' => $wrap('{}'),
-            'requiredClaimPath' => '',
-            'requiredClaimValues' => '',
-            'groupsClaimPath' => '',
-            'managedGroups' => '',
-            'groupMapping' => $wrap('{}'),
-            'rpInitiatedLogout' => true,
-            'backchannelLogout' => true,
-            'nativeLoginMode' => $wrap('allow'),
-            'nativeLoginAllowlist' => $wrap(''),
-            'encoderAddresses' => $wrap(''),
-            'syncEnabled' => false,
-            'syncAdminUrl' => '',
-            'syncClientId' => '',
-            'syncClientSecretFile' => '',
-            'syncRoleSource' => $wrap('clientRoles'),
-            'syncRoleClientId' => '',
-            'syncMaxDisableRatio' => 20,
-            'debugLog' => false,
-        ], $overrides);
+        return SettingsFactory::data($overrides);
     }
 
     public function testReadsDefaults(): void

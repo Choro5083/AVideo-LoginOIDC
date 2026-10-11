@@ -61,9 +61,9 @@ function loginOidcShowError(string $message): never
  * 利用者の画面に出すと攻撃の手がかりになるため。画面には、ログの行を
  * 探すための番号だけを出す。
  */
-function loginOidcFail(string $summary, \Throwable $e): never
+function loginOidcFail(string $summary, \Throwable $e, string $userMessage = 'Sign-in failed. Please try again.'): never
 {
     $reference = bin2hex(random_bytes(4));
     _error_log("LoginOIDC [{$reference}]: {$summary}: {$e->getMessage()}", AVideoLog::$ERROR);
-    loginOidcShowError("Sign-in failed. Please try again, or contact the administrator with this reference: {$reference}");
+    loginOidcShowError("{$userMessage} If the problem persists, contact the administrator with this reference: {$reference}");
 }

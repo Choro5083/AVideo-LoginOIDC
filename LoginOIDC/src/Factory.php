@@ -5,6 +5,8 @@ declare(strict_types=1);
 
 namespace LoginOIDC;
 
+use LoginOIDC\AVideo\AVideoIdentityStore;
+use LoginOIDC\AVideo\AVideoUserDirectory;
 use LoginOIDC\Http\CurlHttpClient;
 use LoginOIDC\Http\HttpClient;
 use LoginOIDC\Oidc\Cache;
@@ -17,6 +19,7 @@ use LoginOIDC\Oidc\SecretBasicAuthenticator;
 use LoginOIDC\Oidc\SecretPostAuthenticator;
 use LoginOIDC\Oidc\TokenClient;
 use LoginOIDC\Oidc\UserInfoClient;
+use LoginOIDC\User\Provisioner;
 
 /** 設定から、処理に使うオブジェクトを組み立てる。 */
 final class Factory
@@ -52,5 +55,10 @@ final class Factory
             $redirectUri,
             $settings->scopes,
         );
+    }
+
+    public static function provisioner(Settings $settings): Provisioner
+    {
+        return new Provisioner($settings, new AVideoIdentityStore(), new AVideoUserDirectory());
     }
 }
