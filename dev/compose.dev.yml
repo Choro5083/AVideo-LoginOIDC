@@ -63,6 +63,9 @@ services:
       KC_HTTP_PORT: "${KEYCLOAK_PORT:-8081}"
       # realm 定義の中の ${...} に入る値
       AVIDEO_BASE_URL: "${AVIDEO_BASE_URL:?AVIDEO_BASE_URL を設定する}"
+      # Back-Channel Logout の通知先。Keycloak のコンテナから AVideo へ届く URL。
+      # 既定は http。AVideo の証明書は自己署名で、https にすると Keycloak が検証に失敗する。
+      AVIDEO_BACKCHANNEL_BASE_URL: "${AVIDEO_BACKCHANNEL_BASE_URL:-http://${SERVER_NAME}}"
     volumes:
       - "${LOGINOIDC_REPO}/dev/keycloak/realm-loginoidc-test.json:/opt/keycloak/data/import/realm-loginoidc-test.json:ro"
 

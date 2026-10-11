@@ -6,11 +6,13 @@
 declare(strict_types=1);
 
 use LoginOIDC\AVideo\DbException;
+use LoginOIDC\AVideo\RequestGuard;
 use LoginOIDC\AVideo\SessionRegistry;
 use LoginOIDC\Factory;
 use LoginOIDC\InvalidSettingException;
 use LoginOIDC\Oidc\OidcException;
 use LoginOIDC\Oidc\PendingLogin;
+use LoginOIDC\Session\SessionMarker;
 use LoginOIDC\User\LoginDeniedException;
 
 require_once __DIR__ . '/../../videos/configuration.php';
@@ -41,22 +43,22 @@ try {
 
 // 本体のログイン処理に任せる（セッション、Cookie、セッション ID の付け替え、他のプラグインへの通知）。
 // パスワードの照合は行わない。本人であることは、IdP の認証を検証して確かめてある。
-$GLOBALS['loginOidcSigningIn'] = true;
+RequestGuard::$signingInViaProvider = true;
 $status = (new User($account->userId))->login(true);
+RequestGuard::$signingInViaProvider = false;
 if ($status !== User::USER_LOGGED) {
     loginOidcFail('sign-in rejected by AVideo', new \RuntimeException("User::login returned {$status} for user {$account->username}"));
 }
 
+// IdP 経由のログインであることをセッションに記す。ログアウトの連動と、無効化の確認に使う。
+$marker = new SessionMarker($account->userId, $login->sessionId, time(), $login->idToken);
+RequestGuard::storeMarker($marker);
 try {
-    (new SessionRegistry())->record($account->userId, (string) session_id(), $login->sessionId);
+    (new SessionRegistry())->record($marker);
 } catch (DbException $e) {
-    // ログイン自体は成立している。記録できないと Back-Channel Logout が効かなくなるので、ログに残す。
+    // ログイン自体は成立している。記録できないと sid を指定した Back-Channel Logout が効かなくなるので、ログに残す。
     _error_log("LoginOIDC: cannot record the session of user {$account->username}: {$e->getMessage()}", AVideoLog::$ERROR);
 }
-_session_start();
-// ログアウト時に id_token_hint として IdP に渡す。
-$_SESSION['loginOIDC']['idToken'] = $login->idToken;
-_session_write_close();
 
 _error_log(
     "LoginOIDC: user {$account->username} (id {$account->userId}) signed in" . ($account->created ? ' (created)' : ''),

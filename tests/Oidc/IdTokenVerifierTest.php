@@ -8,6 +8,7 @@ namespace LoginOIDC\Tests\Oidc;
 use Firebase\JWT\JWT;
 use LoginOIDC\Oidc\IdTokenVerifier;
 use LoginOIDC\Oidc\JwksProvider;
+use LoginOIDC\Oidc\JwtVerifier;
 use LoginOIDC\Oidc\OidcException;
 use LoginOIDC\Tests\Support\ArrayCache;
 use LoginOIDC\Tests\Support\FakeHttpClient;
@@ -31,7 +32,7 @@ final class IdTokenVerifierTest extends TestCase
     {
         $http ??= new FakeHttpClient([self::JWKS_URI => FakeHttpClient::json($jwks ?? self::$idp->jwks())]);
 
-        return new IdTokenVerifier(new JwksProvider($http, new ArrayCache()), $skew);
+        return new IdTokenVerifier(new JwtVerifier(new JwksProvider($http, new ArrayCache()), $skew));
     }
 
     /** @return array<string, mixed> */
@@ -163,6 +164,28 @@ final class IdTokenVerifierTest extends TestCase
             self::assertStringContainsString('key-1', $e->getMessage());
         }
         self::assertSame(2, $http->countRequestsTo(self::JWKS_URI), '取り直すのは1度だけ');
+    }
+
+    public function testDoesNotRefetchJwksAgainRightAfterARefetch(): void
+    {
+        // 知らない kid のトークンを送り続けても、IdP への取り直しは間隔を空ける
+        $old = new TestIdp('old-key');
+        $http = new FakeHttpClient([self::JWKS_URI => [
+            FakeHttpClient::json($old->jwks()),
+            FakeHttpClient::json($old->jwks()),
+        ]]);
+        $verifier = self::verifier($http);
+
+        foreach ([1, 2, 3] as $attempt) {
+            try {
+                self::verify(self::$idp->idToken(), $verifier);
+                self::fail('知らない鍵のトークンを受け入れた');
+            } catch (OidcException) {
+                // 想定どおり
+            }
+        }
+
+        self::assertSame(2, $http->countRequestsTo(self::JWKS_URI), '最初の取得と、取り直しの1回だけ');
     }
 
     public function testIgnoresEncryptionKeys(): void

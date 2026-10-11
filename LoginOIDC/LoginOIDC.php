@@ -3,6 +3,7 @@
 
 declare(strict_types=1);
 
+use LoginOIDC\AVideo\RequestGuard;
 use LoginOIDC\ClientAuthMethod;
 use LoginOIDC\InvalidSettingException;
 use LoginOIDC\NativeLoginMode;
@@ -160,6 +161,18 @@ class LoginOIDC extends PluginAbstract
     public static function settings(): Settings
     {
         return Settings::fromDataObject(AVideoPlugin::getDataObject('LoginOIDC'));
+    }
+
+    /** リクエストの開始時。ログアウトの連動と、無効化されたセッションの確認を行う。 */
+    public function getStart()
+    {
+        RequestGuard::onRequestStart();
+    }
+
+    /** ログインの成立時。IdP を経由しないログインを、設定に従って取り消す。 */
+    public function onUserSignIn($users_id)
+    {
+        RequestGuard::onUserSignIn((int) $users_id);
     }
 
     /** ログイン画面に出すボタン。設定が済んでいなければ出さない。 */

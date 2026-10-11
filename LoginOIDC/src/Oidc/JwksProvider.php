@@ -12,6 +12,7 @@ use LoginOIDC\Http\HttpException;
 final class JwksProvider
 {
     private const CACHE_TTL_SECONDS = 3600;
+    private const MIN_REFRESH_INTERVAL_SECONDS = 30;
 
     public function __construct(
         private readonly HttpClient $http,
@@ -29,6 +30,13 @@ final class JwksProvider
     public function signingKeys(ProviderMetadata $metadata, bool $refresh = false): array
     {
         $cacheKey = 'jwks:' . $metadata->jwksUri;
+        // 取り直しは間隔を空ける。知らない kid のトークンを送り続けるだけで、IdP へ
+        // リクエストを打たせ続けられないようにする。
+        $refreshKey = 'jwks-refreshed:' . $metadata->jwksUri;
+        if ($refresh && $this->cache->get($refreshKey) !== null) {
+            $refresh = false;
+        }
+        $refreshing = $refresh;
         $jwks = $refresh ? null : $this->cache->get($cacheKey);
 
         if ($jwks === null) {
@@ -42,6 +50,9 @@ final class JwksProvider
                 throw new OidcException("cannot fetch JWKS: {$e->getMessage()}", 0, $e);
             }
             $this->cache->set($cacheKey, $jwks, self::CACHE_TTL_SECONDS);
+            if ($refreshing) {
+                $this->cache->set($refreshKey, ['at' => time()], self::MIN_REFRESH_INTERVAL_SECONDS);
+            }
         }
 
         $keys = $jwks['keys'] ?? null;

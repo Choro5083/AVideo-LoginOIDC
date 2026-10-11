@@ -8,6 +8,7 @@ namespace LoginOIDC\Tests\Oidc;
 use LoginOIDC\Oidc\Discovery;
 use LoginOIDC\Oidc\IdTokenVerifier;
 use LoginOIDC\Oidc\JwksProvider;
+use LoginOIDC\Oidc\JwtVerifier;
 use LoginOIDC\Oidc\LoginFlow;
 use LoginOIDC\Oidc\OidcException;
 use LoginOIDC\Oidc\PendingLogin;
@@ -54,7 +55,7 @@ final class LoginFlowTest extends TestCase
         return new LoginFlow(
             new Discovery($http, $cache),
             new TokenClient($http, new SecretBasicAuthenticator(TestIdp::CLIENT_ID, 'secret')),
-            new IdTokenVerifier(new JwksProvider($http, $cache), 60),
+            new IdTokenVerifier(new JwtVerifier(new JwksProvider($http, $cache), 60)),
             $useUserInfo ? new UserInfoClient($http) : null,
             TestIdp::ISSUER,
             TestIdp::CLIENT_ID,

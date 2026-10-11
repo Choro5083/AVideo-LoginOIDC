@@ -106,6 +106,8 @@ AVideo 本体の `vendor/bin/phpunit` は使わない。本体に同梱されて
 
 client role は `resource_access.avideo.roles` として ID Token と UserInfo に入る。
 
+Back-Channel Logout の通知先は `http://<HOST>/plugin/LoginOIDC/backchannelLogout.php`（http）。AVideo の証明書が自己署名で、https にすると Keycloak が検証に失敗するため。変えるなら `AVIDEO_BACKCHANNEL_BASE_URL` を設定する。
+
 **シークレットとパスワードは開発専用の固定値。** この realm を外部から届く場所で動かさない。
 
 ## 作り直す

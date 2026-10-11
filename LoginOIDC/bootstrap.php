@@ -5,9 +5,9 @@
 
 declare(strict_types=1);
 
+use LoginOIDC\AVideo\RequestGuard;
 use LoginOIDC\Factory;
 use LoginOIDC\InvalidSettingException;
-use LoginOIDC\Oidc\FileCache;
 use LoginOIDC\Oidc\LoginFlow;
 
 /** プラグインが無効、または設定が済んでいなければ止める。 */
@@ -32,7 +32,7 @@ function loginOidcFlow(): LoginFlow
     return Factory::loginFlow(
         LoginOIDC::settings(),
         LoginOIDC::callbackUrl(),
-        new FileCache(rtrim(getCacheDir(), '/') . '/LoginOIDC'),
+        RequestGuard::cache(),
     );
 }
 

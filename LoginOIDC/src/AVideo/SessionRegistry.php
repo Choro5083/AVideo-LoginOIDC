@@ -5,24 +5,82 @@ declare(strict_types=1);
 
 namespace LoginOIDC\AVideo;
 
-/**
- * IdP のセッション（sid）と PHP のセッションの対応を記録する。
- *
- * Back-Channel Logout と、同期で無効化したユーザのセッションを切るのに使う。
- */
+use LoginOIDC\Session\SessionMarker;
+use LoginOIDC\Session\SessionState;
+
+/** IdP のセッションの記録と、その無効化。 */
 final class SessionRegistry
 {
-    /** @param string $sid IdP のセッションの ID。IdP が返さなければ空文字 */
-    public function record(int $userId, string $phpSessionId, string $sid): void
+    /** これより古い記録は、ログインのついでに消す。 */
+    private const RETENTION_SECONDS = 90 * 86400;
+
+    public function record(SessionMarker $marker): void
     {
-        if ($phpSessionId === '') {
+        Db::execute('DELETE FROM login_oidc_sessions WHERE created_at < ?', 'i', [$marker->loginAt - self::RETENTION_SECONDS]);
+        if ($marker->sessionId === '') {
             return;
         }
-        Db::execute('DELETE FROM login_oidc_sessions WHERE php_session_id = ?', 's', [$phpSessionId]);
+        // 同じ sid でログインし直すことがある（IdP のセッションが続いたまま、AVideo だけログアウトした場合）。
+        Db::execute('DELETE FROM login_oidc_sessions WHERE sid = ?', 's', [$marker->sessionId]);
         Db::execute(
-            'INSERT INTO login_oidc_sessions (users_id, php_session_id, sid, created) VALUES (?, ?, ?, NOW())',
-            'iss',
-            [$userId, $phpSessionId, $sid === '' ? null : $sid],
+            'INSERT INTO login_oidc_sessions (users_id, sid, created_at) VALUES (?, ?, ?)',
+            'isi',
+            [$marker->userId, $marker->sessionId, $marker->loginAt],
         );
+    }
+
+    public function state(SessionMarker $marker): SessionState
+    {
+        $rows = Db::select(
+            'SELECT u.status, i.sessions_revoked_at,'
+            . ' (SELECT COUNT(*) FROM login_oidc_sessions s'
+            . '   WHERE s.users_id = u.id AND s.sid = ? AND s.revoked_at IS NOT NULL) AS sid_revoked'
+            . ' FROM users u LEFT JOIN login_oidc_identities i ON i.users_id = u.id WHERE u.id = ?',
+            'si',
+            [$marker->sessionId, $marker->userId],
+        );
+        if ($rows === []) {
+            return new SessionState(false, null, false);
+        }
+
+        return new SessionState(
+            $rows[0]['status'] === 'a',
+            $rows[0]['sessions_revoked_at'] === null ? null : (int) $rows[0]['sessions_revoked_at'],
+            (int) $rows[0]['sid_revoked'] > 0,
+        );
+    }
+
+    /** @return int 無効にしたセッションの数 */
+    public function revokeSession(string $sid, int $now): int
+    {
+        return Db::execute(
+            'UPDATE login_oidc_sessions SET revoked_at = ? WHERE sid = ? AND revoked_at IS NULL',
+            'is',
+            [$now, $sid],
+        );
+    }
+
+    /** @return int 対象になったユーザの数（0 か 1） */
+    public function revokeAllOfSubject(string $issuer, string $subject, int $now): int
+    {
+        return Db::execute(
+            'UPDATE login_oidc_identities SET sessions_revoked_at = ?, modified = NOW() WHERE issuer = ? AND subject = ?',
+            'iss',
+            [$now, $issuer, $subject],
+        );
+    }
+
+    public function revokeAllOfUser(int $userId, int $now): int
+    {
+        return Db::execute(
+            'UPDATE login_oidc_identities SET sessions_revoked_at = ?, modified = NOW() WHERE users_id = ?',
+            'ii',
+            [$now, $userId],
+        );
+    }
+
+    public function isLinked(int $userId): bool
+    {
+        return Db::select('SELECT 1 FROM login_oidc_identities WHERE users_id = ? LIMIT 1', 'i', [$userId]) !== [];
     }
 }

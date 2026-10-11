@@ -88,4 +88,25 @@ final class TestIdp
 
         return JWT::encode($claims, $this->privateKey, 'RS256', $this->kid);
     }
+
+    /**
+     * 既定では検証を通る Logout Token。
+     *
+     * @param array<string, mixed> $overrides null を渡した claim は取り除く
+     */
+    public function logoutToken(array $overrides = []): string
+    {
+        $claims = array_filter(array_merge([
+            'iss' => self::ISSUER,
+            'aud' => self::CLIENT_ID,
+            'iat' => self::NOW,
+            'exp' => self::NOW + 120,
+            'jti' => 'jti-1',
+            'sub' => 'user-1',
+            'sid' => 'session-1',
+            'events' => ['http://schemas.openid.net/event/backchannel-logout' => new \stdClass()],
+        ], $overrides), static fn (mixed $v): bool => $v !== null);
+
+        return JWT::encode($claims, $this->privateKey, 'RS256', $this->kid, ['typ' => 'logout+jwt']);
+    }
 }

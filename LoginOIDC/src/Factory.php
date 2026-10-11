@@ -14,7 +14,9 @@ use LoginOIDC\Oidc\ClientAuthenticator;
 use LoginOIDC\Oidc\Discovery;
 use LoginOIDC\Oidc\IdTokenVerifier;
 use LoginOIDC\Oidc\JwksProvider;
+use LoginOIDC\Oidc\JwtVerifier;
 use LoginOIDC\Oidc\LoginFlow;
+use LoginOIDC\Oidc\LogoutTokenVerifier;
 use LoginOIDC\Oidc\SecretBasicAuthenticator;
 use LoginOIDC\Oidc\SecretPostAuthenticator;
 use LoginOIDC\Oidc\TokenClient;
@@ -48,12 +50,24 @@ final class Factory
         return new LoginFlow(
             new Discovery($http, $cache, $settings->allowInsecureHttp),
             new TokenClient($http, self::clientAuthenticator($settings)),
-            new IdTokenVerifier(new JwksProvider($http, $cache), $settings->clockSkewSeconds),
+            new IdTokenVerifier(new JwtVerifier(new JwksProvider($http, $cache), $settings->clockSkewSeconds)),
             $settings->useUserInfo ? new UserInfoClient($http) : null,
             $settings->issuer,
             $settings->clientId,
             $redirectUri,
             $settings->scopes,
+        );
+    }
+
+    public static function logoutTokenVerifier(Settings $settings, Cache $cache): LogoutTokenVerifier
+    {
+        $http = self::httpClient($settings);
+
+        return new LogoutTokenVerifier(
+            new Discovery($http, $cache, $settings->allowInsecureHttp),
+            new JwtVerifier(new JwksProvider($http, $cache), $settings->clockSkewSeconds),
+            $settings->issuer,
+            $settings->clientId,
         );
     }
 
