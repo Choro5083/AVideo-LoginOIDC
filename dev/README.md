@@ -157,8 +157,16 @@ docker compose -f ... -f ... up -d --force-recreate keycloak
 ```bash
 docker compose -f ... -f ... down
 docker volume rm avideo_avideo_db avideo_avideo_db_encoder
-sudo rm -rf .compose/videos
+sudo rm -rf .compose/videos .compose/encoder/videos/configuration.php
 docker compose -f ... -f ... up -d avideo database database_encoder memcached keycloak
+```
+
+**Encoder の設定ファイルも一緒に消す。** DB を消しても `.compose/encoder/videos/configuration.php` が残っていると、インストーラは Encoder を設定済みと見なして、空の DB にテーブルを作らない。Encoder を開くと `Table 'avideo_encoder.encoder_queue' doesn't exist` で落ちる。消し忘れたときは、ファイルを消してからインストーラを流し直す。
+
+```bash
+docker exec avideo-avideo-1 bash -c "rm -f /var/www/html/AVideo/Encoder/videos/configuration.php \
+  && cd /var/www/html/AVideo/install && php ./cli.php \
+  && chown -R www-data:www-data /var/www/html/AVideo/Encoder/videos"
 ```
 
 ## はまった点
