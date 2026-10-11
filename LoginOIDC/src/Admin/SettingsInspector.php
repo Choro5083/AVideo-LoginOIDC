@@ -12,18 +12,18 @@ use LoginOIDC\Sync\KeycloakDirectory;
 use LoginOIDC\SyncRoleSource;
 
 /**
- * 設定の内容を検査する。
+ * Inspects the settings.
  *
- * 本体には、設定を保存するときにプラグインが割り込む仕組みが無い。誤った設定は
- * 保存できてしまうので、保存した後に、ここで問題を見つけて管理画面に出す。
+ * AVideo has no hook for a plugin to validate its settings when they are saved, so wrong
+ * settings can be saved. The problems are found here afterwards and shown on the admin pages.
  *
- * ここで見るのは、設定の値だけで分かること。IdP との通信が要る確認は含まない。
+ * Only what the values alone can tell is checked here. Nothing that needs the provider.
  */
 final class SettingsInspector
 {
     /**
-     * @param  callable(int): bool    $groupExists AVideo に、その ID の user group があるか
-     * @param  callable(string): bool $userExists  AVideo に、その username のユーザがいるか
+     * @param  callable(int): bool    $groupExists whether AVideo has a user group with that ID
+     * @param  callable(string): bool $userExists  whether AVideo has a user with that username
      * @return list<Finding>
      */
     public static function inspect(Settings $settings, callable $groupExists, callable $userExists): array
@@ -80,7 +80,7 @@ final class SettingsInspector
     {
         $findings = [];
 
-        // --- フラグ ---
+        // --- Flags ---
         $managed = array_map(static fn ($flag): string => $flag->value, $settings->managedFlags);
         if ($managed !== [] && $settings->rolesClaimPath === '') {
             $findings[] = Finding::warning('rolesClaimPath', 'Not set, so managedFlags has no effect.');
@@ -105,7 +105,7 @@ final class SettingsInspector
             }
             foreach ($managed as $flag) {
                 if (!isset($mapped[$flag])) {
-                    // 管理対象なのに、付ける条件が無い。全員から外れる。isAdmin だと管理者がいなくなる。
+                    // Managed, but nothing grants it: it is removed from everyone. With isAdmin, no admin is left.
                     $findings[] = Finding::warning(
                         'flagMapping',
                         'No value maps to %s. It will be removed from every user who signs in through the provider.',
@@ -137,7 +137,7 @@ final class SettingsInspector
             }
         }
 
-        // --- ログインに必要な条件 ---
+        // --- Requirement to sign in ---
         if (($settings->requiredClaimPath === '') !== ($settings->requiredClaimValues === [])) {
             $findings[] = Finding::warning(
                 'requiredClaimPath',

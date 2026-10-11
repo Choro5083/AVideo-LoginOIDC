@@ -8,7 +8,7 @@ namespace LoginOIDC\Oidc;
 use LoginOIDC\Http\HttpClient;
 use LoginOIDC\Http\HttpException;
 
-/** issuer から Discovery 文書（.well-known/openid-configuration）を取る。 */
+/** Fetches the discovery document (.well-known/openid-configuration) of an issuer. */
 final class Discovery
 {
     private const CACHE_TTL_SECONDS = 3600;
@@ -20,7 +20,7 @@ final class Discovery
     ) {
     }
 
-    /** @throws OidcException 取得できない、または内容が正しくないとき */
+    /** @throws OidcException when it cannot be fetched or is malformed */
     public function fetch(string $issuer): ProviderMetadata
     {
         $this->assertAllowedScheme($issuer, 'issuer');
@@ -42,8 +42,8 @@ final class Discovery
             throw new OidcException("cannot fetch the discovery document: {$e->getMessage()}", 0, $e);
         }
 
-        // issuer が一致しない文書を受け入れると、別の IdP のエンドポイントへ
-        // 誘導されうる（OpenID Connect Discovery 1.0 の 4.3 節）。
+        // Accepting a document whose issuer differs could steer the plugin to the endpoints
+        // of another provider (OpenID Connect Discovery 1.0, section 4.3).
         if ($metadata->issuer !== $issuer) {
             throw new OidcException(
                 "discovery document issuer does not match the configured issuer (configured: {$issuer}, document: {$metadata->issuer})"

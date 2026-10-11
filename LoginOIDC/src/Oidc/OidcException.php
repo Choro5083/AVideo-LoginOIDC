@@ -6,10 +6,10 @@ declare(strict_types=1);
 namespace LoginOIDC\Oidc;
 
 /**
- * OIDC の手続きが失敗した。
+ * The OIDC exchange failed.
  *
- * メッセージは管理者向けのログ用。利用者の画面にはそのまま出さない
- * （IdP の応答や検証の詳細を含むことがあるため）。
+ * The message is for the admin's log. It is not shown to the user as it is,
+ * because it can contain the provider's response and details of the verification.
  */
 final class OidcException extends \RuntimeException
 {

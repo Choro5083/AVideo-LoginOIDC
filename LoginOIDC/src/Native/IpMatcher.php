@@ -8,8 +8,8 @@ namespace LoginOIDC\Native;
 final class IpMatcher
 {
     /**
-     * アドレスが、一覧のどれか（単一のアドレスか CIDR）に含まれるか。
-     * 読めない項目は一致しないものとして扱う。
+     * Whether the address is covered by any item of the list (a single address or a CIDR range).
+     * Items that cannot be read match nothing.
      *
      * @param list<string> $ranges
      */
@@ -28,13 +28,13 @@ final class IpMatcher
         return false;
     }
 
-    /** 単一のアドレスか CIDR として読めるか。 */
+    /** Whether it reads as a single address or a CIDR range. */
     public static function isValidRange(string $range): bool
     {
         return self::parse($range) !== null;
     }
 
-    /** すべてのアドレスに一致する範囲か（0.0.0.0/0、::/0）。 */
+    /** Whether the range matches every address (0.0.0.0/0, ::/0). */
     public static function coversEverything(string $range): bool
     {
         $parsed = self::parse($range);
@@ -42,7 +42,7 @@ final class IpMatcher
         return $parsed !== null && $parsed[1] === 0;
     }
 
-    /** @return array{string, int}|null [ネットワークのアドレス（バイト列）, プレフィックス長]。読めなければ null */
+    /** @return array{string, int}|null [network address as bytes, prefix length]. null when it cannot be read */
     private static function parse(string $range): ?array
     {
         [$network, $prefix] = array_pad(explode('/', $range, 2), 2, null);
@@ -61,7 +61,7 @@ final class IpMatcher
     private static function matches(string $packed, string $range): bool
     {
         $parsed = self::parse($range);
-        // IPv4 と IPv6 は長さが違うので、種類が違えば一致しない。
+        // IPv4 and IPv6 differ in length, so different families never match.
         if ($parsed === null || strlen($parsed[0]) !== strlen($packed)) {
             return false;
         }

@@ -5,13 +5,13 @@ declare(strict_types=1);
 
 namespace LoginOIDC;
 
-/** ネイティブログイン（ユーザ名とパスワード）の制御モード。 */
+/** How far native sign-in (username and password) is allowed. */
 enum NativeLoginMode: string
 {
-    /** 制限しない */
+    /** no restriction */
     case Allow = 'allow';
-    /** IdP に紐付いたユーザだけ禁止する */
+    /** denied only for users linked to the provider */
     case DenyLinked = 'denyLinked';
-    /** 許可リストのユーザだけ許可する */
+    /** allowed only for the users in the allowlist */
     case Allowlist = 'allowlist';
 }

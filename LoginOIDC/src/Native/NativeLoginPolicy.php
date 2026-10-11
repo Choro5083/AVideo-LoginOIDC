@@ -11,18 +11,18 @@ use LoginOIDC\Settings;
 final class NativeLoginPolicy
 {
     /**
-     * ログインを拒否する理由を返す。許すなら null。
+     * Returns why the sign-in is denied, or null when it is allowed.
      */
     public static function reasonToDeny(Settings $settings, NativeLoginAttempt $attempt): ?string
     {
-        // Encoder は、投稿者本人のユーザ名とパスワードのハッシュで AVideo にログインする。
-        // これを止めるとアップロードが壊れるので、設定したアドレスからのログインは制御しない。
+        // The Encoder signs in to AVideo as the uploader, with their username and a password token.
+        // Blocking that breaks uploads, so sign-ins from the configured addresses are not controlled.
         if (IpMatcher::matchesAny($attempt->remoteAddress, $settings->encoderAddresses)) {
             return null;
         }
 
-        // IdP に紐付いたユーザは、Cookie からログイン状態を復元させない。復元を許すと、
-        // IdP 側でログアウトや無効化をしても、Cookie を持つ端末でログインが続いてしまう。
+        // Users linked to the provider are never restored from the cookie. Otherwise a device holding
+        // the cookie would stay signed in after a logout or a deactivation at the provider.
         if ($attempt->linked && $attempt->viaCookie) {
             return 'restoring a sign-in from the cookie is not allowed for users linked to the provider';
         }

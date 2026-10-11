@@ -6,7 +6,7 @@ declare(strict_types=1);
 namespace LoginOIDC\Oidc;
 
 /**
- * Logout Token を検証する（OpenID Connect Back-Channel Logout 1.0 の 2.6 節）。
+ * Verifies a Logout Token (OpenID Connect Back-Channel Logout 1.0, section 2.6).
  */
 final class LogoutTokenVerifier
 {
@@ -20,7 +20,7 @@ final class LogoutTokenVerifier
     ) {
     }
 
-    /** @throws OidcException 検証に失敗したとき */
+    /** @throws OidcException when verification fails */
     public function verify(#[\SensitiveParameter] string $logoutToken, ?int $now = null): LogoutNotice
     {
         $metadata = $this->discovery->fetch($this->issuer);
@@ -36,12 +36,12 @@ final class LogoutTokenVerifier
         if (!is_numeric($claims['iat'] ?? null)) {
             throw new OidcException('Logout Token has no iat');
         }
-        // ログアウトの通知であることを示す events が必須。これが無いトークン（例えば ID Token）を
-        // ログアウトの通知として受け入れない。
+        // The events claim that marks a logout notice is required. A token without it (an ID Token,
+        // for example) is not accepted as a logout notice.
         if (!is_array($claims['events'] ?? null) || !array_key_exists(self::EVENT, $claims['events'])) {
             throw new OidcException('Logout Token has no back-channel logout event');
         }
-        // nonce を持つトークンは Logout Token ではない（ID Token の流用を防ぐための規定）。
+        // A token with a nonce is not a Logout Token (the rule exists to stop ID Tokens being reused).
         if (array_key_exists('nonce', $claims)) {
             throw new OidcException('Logout Token must not contain a nonce');
         }

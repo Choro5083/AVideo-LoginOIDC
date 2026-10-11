@@ -5,19 +5,19 @@ declare(strict_types=1);
 
 namespace LoginOIDC\User;
 
-/** claim の値から、AVideo の username を作る。 */
+/** Makes an AVideo username from a claim value. */
 final class UsernamePolicy
 {
-    /** users.user は VARCHAR(45) */
+    /** users.user is VARCHAR(45) */
     public const MAX_LENGTH = 45;
 
     private const FALLBACK = 'user';
 
     /**
-     * 使えない文字を除き、長さを切り詰めた候補を返す。
+     * Returns a candidate with unusable characters removed and the length cut.
      *
-     * 残すのは英数字と . _ - @ だけ。AVideo は username を URL や HTML に
-     * そのまま出す箇所があるため、記号は広く許さない。
+     * Only letters, digits and . _ - @ are kept. AVideo puts the username into URLs
+     * and HTML as it is in places, so symbols are not allowed broadly.
      */
     public static function sanitize(string $raw): string
     {
@@ -28,10 +28,10 @@ final class UsernamePolicy
     }
 
     /**
-     * 使われていない username を返す。重複したら連番を付ける（alice、alice2、alice3…）。
+     * Returns a username that is not taken. On a clash a number is appended (alice, alice2, alice3…).
      *
      * @param callable(string): bool $isTaken
-     * @throws \RuntimeException 空きが見つからないとき
+     * @throws \RuntimeException when no free name is found
      */
     public static function unique(string $raw, callable $isTaken): string
     {

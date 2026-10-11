@@ -8,7 +8,7 @@ namespace LoginOIDC\Oidc;
 use LoginOIDC\Http\HttpClient;
 use LoginOIDC\Http\HttpException;
 
-/** UserInfo エンドポイントから claim を取る。 */
+/** Fetches claims from the UserInfo endpoint. */
 final class UserInfoClient
 {
     public function __construct(private readonly HttpClient $http)
@@ -16,9 +16,9 @@ final class UserInfoClient
     }
 
     /**
-     * @param  string $expectedSubject ID Token の sub
+     * @param  string $expectedSubject sub of the ID Token
      * @return array<string, mixed>
-     * @throws OidcException 取得できない、または sub が ID Token と違うとき
+     * @throws OidcException when it cannot be fetched or its sub differs from the ID Token
      */
     public function fetch(
         ProviderMetadata $metadata,
@@ -42,8 +42,8 @@ final class UserInfoClient
             throw new OidcException("cannot fetch UserInfo: {$e->getMessage()}", 0, $e);
         }
 
-        // sub が一致しない応答は使わない。別人の情報を混ぜる攻撃を防ぐ
-        // （OpenID Connect Core 1.0 の 5.3.2 節）。
+        // A response with a different sub is not used. This stops another person's claims being mixed in
+        // (OpenID Connect Core 1.0, section 5.3.2).
         if (($claims['sub'] ?? null) !== $expectedSubject) {
             throw new OidcException('UserInfo sub does not match the ID Token');
         }

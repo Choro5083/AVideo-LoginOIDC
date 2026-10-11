@@ -19,10 +19,10 @@ require_once __DIR__ . '/src/autoload.php';
 Translations::register(__DIR__ . '/locale');
 
 /**
- * OpenID Connect によるログインを AVideo に追加する。
+ * Adds sign-in with OpenID Connect to AVideo.
  *
- * このクラスは AVideo との接点だけを持つ。処理の中身は src/ に置き、
- * AVideo に依存しない形でテストできるようにする。
+ * This class is only the contact surface with AVideo. The logic lives in src/,
+ * where it can be tested without AVideo.
  */
 class LoginOIDC extends PluginAbstract
 {
@@ -58,20 +58,20 @@ class LoginOIDC extends PluginAbstract
             . self::settingsStatus();
     }
 
-    /** 本体の言語設定に合わせて文言を翻訳する。訳が無ければ、英語のまま返す。 */
+    /** Translates a text for AVideo's current language. Returns the English text when there is no translation. */
     public static function t(string $text): string
     {
-        // 第2引数を付けないと、本体が引用符などを文字参照に変える。出力するときに、こちらでエスケープする。
+        // Without the second argument AVideo turns quotes and the like into entities. We escape on output instead.
         return __($text, true);
     }
 
-    /** 翻訳して、HTML に出せる形にする。 */
+    /** Translates and escapes for HTML. */
     private static function html(string $text, string|int ...$arguments): string
     {
         return htmlspecialchars(vsprintf(self::t($text), $arguments), ENT_QUOTES, 'UTF-8');
     }
 
-    /** プラグインの一覧に、設定の検査を開くボタンを出す。 */
+    /** Adds the button that opens the settings check to the plugin list. */
     public function getPluginMenu()
     {
         return '<button onclick="avideoModalIframe(webSiteRootURL+\'plugin/LoginOIDC/check.php\')"'
@@ -79,10 +79,10 @@ class LoginOIDC extends PluginAbstract
     }
 
     /**
-     * 設定に問題があれば、プラグインの一覧の説明欄に出す。
+     * Shows problems in the settings in the description column of the plugin list.
      *
-     * 本体には、設定を保存するときにプラグインが割り込む仕組みが無い。保存すると一覧が
-     * 読み直されるので、ここに出しておけば、誤った設定を保存した直後に気づける。
+     * AVideo has no hook for a plugin to validate its settings when they are saved. The list is
+     * reloaded after saving, so showing the problems here makes a bad save visible right away.
      */
     private static function settingsStatus(): string
     {
@@ -92,7 +92,7 @@ class LoginOIDC extends PluginAbstract
         try {
             $findings = SettingsReport::quick(self::settings(...));
         } catch (\Throwable $e) {
-            // 説明欄を作れないだけで、プラグインの一覧まで落とさない。
+            // Failing to build the description must not take the plugin list down.
             return '<br><span class="label label-danger">' . self::html('The settings could not be checked') . '</span> '
                 . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
         }
@@ -132,10 +132,10 @@ class LoginOIDC extends PluginAbstract
     {
         $obj = new stdClass();
 
-        // --- 接続 ---
+        // --- Connection ---
         $obj->issuer = '';
         $obj->clientId = '';
-        // 本体の「encrypted」型。管理画面から保存すると、DB には暗号化して入る。
+        // AVideo's "encrypted" type: saved from the admin page, it is stored encrypted in the database.
         $obj->clientSecret = self::encrypted();
         $obj->clientSecretFile = '';
         $obj->clientAuthMethod = self::select(
@@ -152,11 +152,11 @@ class LoginOIDC extends PluginAbstract
         $obj->allowInsecureHttp = false;
         $obj->loginRateLimit = 60;
 
-        // --- ログイン画面 ---
+        // --- Sign-in page ---
         $obj->buttonLabel = 'Login with SSO';
         $obj->autoRedirect = false;
 
-        // --- ユーザ ---
+        // --- Users ---
         $obj->createUsers = true;
         $obj->usernameClaim = 'preferred_username';
         $obj->nameClaim = 'name';
@@ -165,7 +165,7 @@ class LoginOIDC extends PluginAbstract
         $obj->updateEmail = true;
         $obj->updateEmailVerified = true;
 
-        // --- 権限と user group ---
+        // --- Permissions and user groups ---
         $obj->rolesClaimPath = '';
         $obj->managedFlags = '';
         $obj->flagMapping = self::textarea('{}');
@@ -175,11 +175,11 @@ class LoginOIDC extends PluginAbstract
         $obj->managedGroups = '';
         $obj->groupMapping = self::textarea('{}');
 
-        // --- ログアウト ---
+        // --- Logout ---
         $obj->rpInitiatedLogout = true;
         $obj->backchannelLogout = true;
 
-        // --- ネイティブログイン ---
+        // --- Native sign-in ---
         $obj->nativeLoginMode = self::select(
             [
                 NativeLoginMode::Allow->value => self::t('No restriction'),
@@ -191,7 +191,7 @@ class LoginOIDC extends PluginAbstract
         $obj->nativeLoginAllowlist = self::textarea('');
         $obj->encoderAddresses = self::textarea('');
 
-        // --- Keycloak の同期 ---
+        // --- Keycloak sync ---
         $obj->syncEnabled = false;
         $obj->syncAdminUrl = '';
         $obj->syncClientId = '';
@@ -207,7 +207,7 @@ class LoginOIDC extends PluginAbstract
         $obj->syncRoleClientId = '';
         $obj->syncMaxDisableRatio = 20;
 
-        // --- その他 ---
+        // --- Other ---
         $obj->debugLog = false;
 
         foreach (self::helpTexts() as $property => [$name, $description]) {
@@ -218,24 +218,24 @@ class LoginOIDC extends PluginAbstract
     }
 
     /**
-     * 設定を、型の決まった値として読む。
+     * Reads the settings as typed values.
      *
-     * @throws InvalidSettingException 設定値が解釈できないとき
+     * @throws InvalidSettingException when a setting cannot be interpreted
      */
     public static function settings(): Settings
     {
-        // 本体が持つ設定のオブジェクトを書き換えないよう、写しに対して復号する
-        // （書き換えると、他の処理が平文のまま保存し直すおそれがある）。
+        // Decrypt on a copy so the settings object AVideo holds is not modified
+        // (otherwise other code could save it back with the secret in clear text).
         $data = unserialize(serialize(AVideoPlugin::getDataObject('LoginOIDC')));
 
         return Settings::fromDataObject(self::decryptSecrets($data));
     }
 
     /**
-     * 暗号化して保存された項目を元に戻す。
+     * Decrypts the settings that are stored encrypted.
      *
-     * 本体の Plugin::decryptIfNeed() は使わない。type が配列の項目（選択肢）があると、
-     * 型の確認をせずに strtolower() に渡して落ちる。
+     * AVideo's Plugin::decryptIfNeed() is not used. For a setting whose type is an array
+     * (a select), it passes the array to strtolower() without checking the type and fails.
      */
     private static function decryptSecrets(stdClass $data): stdClass
     {
@@ -245,7 +245,7 @@ class LoginOIDC extends PluginAbstract
                 && is_string($value->type ?? null) && strtolower($value->type) === 'encrypted'
                 && is_string($value->value ?? null) && $value->value !== ''
             ) {
-                // 暗号化されていない値（管理画面を通さずに入れたもの）には false が返る。そのまま使う。
+                // For a value that is not encrypted (entered without the admin page) this returns false. Use it as is.
                 $plain = Plugin::isEncrypted($value->value);
                 if (is_string($plain)) {
                     $value->value = $plain;
@@ -257,10 +257,10 @@ class LoginOIDC extends PluginAbstract
     }
 
     /**
-     * リクエストの開始時。ログアウトの連動と、無効化されたセッションの確認を行う。
+     * Start of a request. Links logout with the provider and ends revoked sessions.
      *
-     * このフックは、サイトのすべてのリクエストで呼ばれる。ここで例外を外に出すと、サイト全体が
-     * 落ちる。想定していない失敗は記録するだけにして、本体の処理を続けさせる。
+     * This hook runs for every request to the site. An exception escaping from here takes the
+     * whole site down, so unexpected failures are logged and AVideo carries on.
      */
     public function getStart()
     {
@@ -272,10 +272,10 @@ class LoginOIDC extends PluginAbstract
     }
 
     /**
-     * ログインの成立時。IdP を経由しないログインを、設定に従って取り消す。
+     * A sign-in just succeeded. Cancels sign-ins that bypass the provider, as configured.
      *
-     * 判定の途中で想定していない失敗が起きたら、ログインを取り消す。通してしまうと、
-     * 制御をすり抜けられるため。
+     * If the decision itself fails unexpectedly, the sign-in is cancelled. Letting it
+     * through would be a way around the control.
      */
     public function onUserSignIn($users_id)
     {
@@ -287,7 +287,7 @@ class LoginOIDC extends PluginAbstract
         }
     }
 
-    /** ログイン画面に出すボタン。設定が済んでいなければ出さない。 */
+    /** The button for the sign-in page. Not shown until the plugin is configured. */
     public function getLogin()
     {
         try {
@@ -329,7 +329,7 @@ class LoginOIDC extends PluginAbstract
     }
 
     /**
-     * 設定画面に出す項目名と説明。
+     * Names and descriptions shown on the settings page.
      *
      * @return array<string, array{string, string}>
      */

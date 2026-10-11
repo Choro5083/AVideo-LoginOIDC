@@ -5,15 +5,15 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Session;
 
-/** あるユーザとセッションについて、DB に記録されている状態。 */
+/** What the database records about a user and a session. */
 final class SessionState
 {
     public function __construct(
-        /** ユーザが存在し、有効か */
+        /** whether the user exists and is enabled */
         public readonly bool $userActive,
-        /** このユーザの全セッションを無効にした時刻（UNIX 秒）。していなければ null */
+        /** when every session of the user was revoked (UNIX seconds), or null if never */
         public readonly ?int $allRevokedAt,
-        /** この IdP セッション（sid）が無効にされたか */
+        /** whether this provider session (sid) was revoked */
         public readonly bool $sessionRevoked,
     ) {
     }

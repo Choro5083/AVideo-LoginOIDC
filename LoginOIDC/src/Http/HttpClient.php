@@ -9,8 +9,8 @@ interface HttpClient
 {
     /**
      * @param array<string, string> $headers
-     * @param array<string, string> $form    空でなければ application/x-www-form-urlencoded の POST にする
-     * @throws HttpException 接続できない、タイムアウトしたなど、応答を得られなかったとき
+     * @param array<string, string> $form    when not empty, the request is a POST with application/x-www-form-urlencoded
+     * @throws HttpException when no response was obtained (cannot connect, timeout and so on)
      */
     public function request(string $url, array $headers = [], array $form = []): HttpResponse;
 }

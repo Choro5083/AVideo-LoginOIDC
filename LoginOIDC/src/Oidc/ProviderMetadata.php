@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Oidc;
 
-/** IdP の Discovery 文書のうち、このプラグインが使う部分。 */
+/** The part of the provider's discovery document this plugin uses. */
 final class ProviderMetadata
 {
     /**
@@ -26,7 +26,7 @@ final class ProviderMetadata
 
     /**
      * @param array<string, mixed> $document
-     * @throws OidcException 必須の項目が無い、または形が違うとき
+     * @throws OidcException when a required member is missing or malformed
      */
     public static function fromArray(array $document): self
     {
@@ -37,7 +37,7 @@ final class ProviderMetadata
             jwksUri: self::requiredUrl($document, 'jwks_uri'),
             userinfoEndpoint: self::optionalUrl($document, 'userinfo_endpoint'),
             endSessionEndpoint: self::optionalUrl($document, 'end_session_endpoint'),
-            // 省略時の既定は client_secret_basic（OpenID Connect Discovery 1.0 の 3 章）
+            // The default when omitted is client_secret_basic (OpenID Connect Discovery 1.0, section 3)
             tokenEndpointAuthMethods: self::stringList($document, 'token_endpoint_auth_methods_supported')
                 ?: ['client_secret_basic'],
             idTokenSigningAlgs: self::stringList($document, 'id_token_signing_alg_values_supported'),

@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC;
 
-/** Keycloak の同期で、権限の元にする割り当ての種類。 */
+/** Which kind of assignment the Keycloak sync derives permissions from. */
 enum SyncRoleSource: string
 {
     case ClientRoles = 'clientRoles';

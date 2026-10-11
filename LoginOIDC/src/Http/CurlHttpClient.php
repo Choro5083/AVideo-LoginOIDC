@@ -6,11 +6,11 @@ declare(strict_types=1);
 namespace LoginOIDC\Http;
 
 /**
- * curl による実装。
+ * Implementation with curl.
  *
- * TLS の検証は常に行い、無効にする手段は用意しない。独自の CA を使う場合は
- * CA 証明書のファイルを渡す。リダイレクトは追わない（IdP のエンドポイントが
- * 別の場所へ飛ばすことは想定せず、飛ばされたら失敗として扱う）。
+ * TLS is always verified, and there is no way to turn that off. For a private CA,
+ * pass the CA certificate file. Redirects are not followed: a provider endpoint is
+ * not expected to redirect, and one that does is treated as a failure.
  */
 final class CurlHttpClient implements HttpClient
 {

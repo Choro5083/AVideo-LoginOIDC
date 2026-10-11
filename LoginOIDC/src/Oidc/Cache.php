@@ -5,10 +5,10 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Oidc;
 
-/** Discovery の結果と JWKS を置く場所。 */
+/** Where the discovery result and the JWKS are kept. */
 interface Cache
 {
-    /** @return array<string, mixed>|null 無いか、期限が切れていれば null */
+    /** @return array<string, mixed>|null null when absent or expired */
     public function get(string $key): ?array;
 
     /** @param array<string, mixed> $value */

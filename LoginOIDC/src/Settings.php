@@ -6,23 +6,23 @@ declare(strict_types=1);
 namespace LoginOIDC;
 
 /**
- * プラグインの設定。AVideo のデータオブジェクトを、型の決まった値に直したもの。
+ * The plugin settings: AVideo's data object turned into typed values.
  *
- * AVideo の設定画面は文字列・真偽値・選択肢・複数行テキストしか持てないため、
- * 一覧や対応表は文字列で受け取り、ここで解釈する。解釈できない値は
- * InvalidSettingException で止め、黙って既定値に倒さない。
+ * AVideo's settings page only knows strings, booleans, selects and multi-line text,
+ * so lists and mappings arrive as strings and are interpreted here. A value that cannot
+ * be interpreted stops with InvalidSettingException. It never falls back silently to a default.
  */
 final class Settings
 {
     /**
      * @param list<string>                   $scopes
      * @param list<UserFlag>                 $managedFlags
-     * @param array<string, list<UserFlag>>  $flagMapping          claim の値 → 付けるフラグ
-     * @param list<string>                   $requiredClaimValues  どれかを含めばログインを許す
-     * @param list<int>                      $managedGroups        管理する user group の ID
-     * @param array<string, list<int>>       $groupMapping         claim の値 → user group の ID
-     * @param list<string>                   $nativeLoginAllowlist ネイティブログインを許す username
-     * @param list<string>                   $encoderAddresses     制御の例外にする Encoder の IP / CIDR
+     * @param array<string, list<UserFlag>>  $flagMapping          claim value → flags to grant
+     * @param list<string>                   $requiredClaimValues  having any one of them allows the sign-in
+     * @param list<int>                      $managedGroups        IDs of the managed user groups
+     * @param array<string, list<int>>       $groupMapping         claim value → user group IDs
+     * @param list<string>                   $nativeLoginAllowlist usernames allowed to sign in natively
+     * @param list<string>                   $encoderAddresses     Encoder IPs / CIDR ranges exempt from the control
      */
     public function __construct(
         public readonly string $issuer,
@@ -70,9 +70,9 @@ final class Settings
     }
 
     /**
-     * AVideo のデータオブジェクトから作る。
+     * Builds the settings from AVideo's data object.
      *
-     * @throws InvalidSettingException 解釈できない値があるとき
+     * @throws InvalidSettingException when a value cannot be interpreted
      */
     public static function fromDataObject(object $data): self
     {
@@ -123,16 +123,16 @@ final class Settings
         );
     }
 
-    /** ログインに必要な最低限の項目（issuer と clientId）が入っているか。 */
+    /** Whether the minimum needed for a sign-in (issuer and clientId) is set. */
     public function isConfigured(): bool
     {
         return $this->issuer !== '' && $this->clientId !== '';
     }
 
     /**
-     * クライアントシークレット。ファイルが指定されていれば、そちらを優先する。
+     * The client secret. A configured file takes precedence.
      *
-     * @throws InvalidSettingException ファイルを読めない、またはシークレットが空のとき
+     * @throws InvalidSettingException when the file cannot be read or the secret is empty
      */
     public function resolveClientSecret(): string
     {
@@ -140,9 +140,9 @@ final class Settings
     }
 
     /**
-     * 同期用の client のシークレット。DB には保存しない。環境変数かファイルで受け取る。
+     * The secret of the sync client. Never stored in the database: it comes from the environment or a file.
      *
-     * @param  string $fromEnvironment 環境変数 LOGINOIDC_SYNC_CLIENT_SECRET の値。無ければ空文字
+     * @param  string $fromEnvironment value of the environment variable LOGINOIDC_SYNC_CLIENT_SECRET, or an empty string
      * @throws InvalidSettingException
      */
     public function resolveSyncClientSecret(string $fromEnvironment): string
@@ -173,7 +173,7 @@ final class Settings
     }
 
     /**
-     * 区切り文字と改行で分け、前後の空白と空の要素を除く。
+     * Splits at the separator and at line breaks, trims, and drops empty items.
      *
      * @return list<string>
      */
@@ -188,7 +188,7 @@ final class Settings
     }
 
     /**
-     * 「claim の値 → フラグの一覧」の JSON を解釈する。
+     * Interprets the JSON of "claim value → list of flags".
      *
      * @return array<string, list<UserFlag>>
      * @throws InvalidSettingException
@@ -204,7 +204,7 @@ final class Settings
     }
 
     /**
-     * 「claim の値 → user group の ID の一覧」の JSON を解釈する。
+     * Interprets the JSON of "claim value → list of user group IDs".
      *
      * @return array<string, list<int>>
      * @throws InvalidSettingException
@@ -220,7 +220,7 @@ final class Settings
     }
 
     /**
-     * 対応表の JSON を「文字列 → 値の一覧」に直す。中身の型はここでは見ない。
+     * Turns the mapping JSON into "string → list of values". The types inside are not checked here.
      *
      * @return array<string, list<mixed>>
      * @throws InvalidSettingException
@@ -292,7 +292,7 @@ final class Settings
     }
 
     /**
-     * 選択肢と複数行テキストは {type, value} のオブジェクトで保存される。値だけを取り出す。
+     * Selects and multi-line texts are stored as {type, value} objects. Takes just the value.
      *
      * @return array<string, mixed>
      */

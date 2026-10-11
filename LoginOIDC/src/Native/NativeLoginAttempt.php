@@ -5,14 +5,14 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Native;
 
-/** IdP を経由しないログイン（ユーザ名とパスワード、または Cookie からの復元）。 */
+/** A sign-in that bypasses the provider (username and password, or restoration from the cookie). */
 final class NativeLoginAttempt
 {
     public function __construct(
         public readonly string $username,
-        /** このユーザが IdP に紐付いているか */
+        /** whether the user is linked to the provider */
         public readonly bool $linked,
-        /** ログイン状態を復元する Cookie によるものか */
+        /** whether it is a restoration from the remember-me cookie */
         public readonly bool $viaCookie,
         public readonly string $remoteAddress,
     ) {

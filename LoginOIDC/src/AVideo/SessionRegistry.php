@@ -9,10 +9,10 @@ use LoginOIDC\Session\SessionMarker;
 use LoginOIDC\Session\SessionRevoker;
 use LoginOIDC\Session\SessionState;
 
-/** IdP のセッションの記録と、その無効化。 */
+/** Records provider sessions and revokes them. */
 final class SessionRegistry implements SessionRevoker
 {
-    /** これより古い記録は、ログインのついでに消す。 */
+    /** Older records are removed whenever someone signs in. */
     private const RETENTION_SECONDS = 90 * 86400;
 
     public function record(SessionMarker $marker): void
@@ -21,7 +21,7 @@ final class SessionRegistry implements SessionRevoker
         if ($marker->sessionId === '') {
             return;
         }
-        // 同じ sid でログインし直すことがある（IdP のセッションが続いたまま、AVideo だけログアウトした場合）。
+        // The same sid can sign in again (the provider session lives on while only AVideo was signed out).
         Db::execute('DELETE FROM login_oidc_sessions WHERE sid = ?', 's', [$marker->sessionId]);
         Db::execute(
             'INSERT INTO login_oidc_sessions (users_id, sid, created_at) VALUES (?, ?, ?)',
@@ -51,7 +51,7 @@ final class SessionRegistry implements SessionRevoker
         );
     }
 
-    /** @return int 無効にしたセッションの数 */
+    /** @return int number of sessions revoked */
     public function revokeSession(string $sid, int $now): int
     {
         return Db::execute(
@@ -61,7 +61,7 @@ final class SessionRegistry implements SessionRevoker
         );
     }
 
-    /** @return int 対象になったユーザの数（0 か 1） */
+    /** @return int number of users affected (0 or 1) */
     public function revokeAllOfSubject(string $issuer, string $subject, int $now): int
     {
         return Db::execute(

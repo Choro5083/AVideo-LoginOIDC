@@ -1,7 +1,7 @@
 <?php
 // SPDX-License-Identifier: MIT
 
-// IdP からのコールバック。認証の結果を検証し、AVideo にログインさせる。
+// Callback from the provider. Verifies the result and signs the user in to AVideo.
 
 declare(strict_types=1);
 
@@ -21,7 +21,7 @@ require_once __DIR__ . '/bootstrap.php';
 loginOidcRequireEnabled();
 loginOidcRateLimit('loginoidc_callback');
 
-// 保存しておいた値は1度しか使わない。読んだらすぐ消し、同じコールバックの再送を無効にする。
+// The stored values are used once. Remove them as soon as they are read, so a replayed callback fails.
 _session_start();
 $pending = PendingLogin::fromArray($_SESSION['loginOIDC']['pending'] ?? null);
 unset($_SESSION['loginOIDC']['pending']);
@@ -41,8 +41,8 @@ try {
     loginOidcFail('cannot prepare the user', $e);
 }
 
-// 本体のログイン処理に任せる（セッション、Cookie、セッション ID の付け替え、他のプラグインへの通知）。
-// パスワードの照合は行わない。本人であることは、IdP の認証を検証して確かめてある。
+// Leave the sign-in to AVideo (session, cookies, new session ID, notifying other plugins).
+// No password is checked. The identity was established by verifying the provider's authentication.
 RequestGuard::$signingInViaProvider = true;
 $status = (new User($account->userId))->login(true);
 RequestGuard::$signingInViaProvider = false;
@@ -50,13 +50,13 @@ if ($status !== User::USER_LOGGED) {
     loginOidcFail('sign-in rejected by AVideo', new \RuntimeException("User::login returned {$status} for user {$account->username}"));
 }
 
-// IdP 経由のログインであることをセッションに記す。ログアウトの連動と、無効化の確認に使う。
+// Mark the session as signed in through the provider. Logout linking and the revocation check use it.
 $marker = new SessionMarker($account->userId, $login->sessionId, time(), $login->idToken);
 RequestGuard::storeMarker($marker);
 try {
     (new SessionRegistry())->record($marker);
 } catch (DbException $e) {
-    // ログイン自体は成立している。記録できないと sid を指定した Back-Channel Logout が効かなくなるので、ログに残す。
+    // The sign-in itself succeeded. Without the record, a back-channel logout that names a sid has no effect, so log it.
     _error_log("LoginOIDC: cannot record the session of user {$account->username}: {$e->getMessage()}", AVideoLog::$ERROR);
 }
 

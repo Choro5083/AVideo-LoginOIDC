@@ -5,13 +5,13 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Sync;
 
-/** 同期の結果。dry-run のときは「こうなるはずだった」内容。 */
+/** Result of a sync. For a dry run, what would have happened. */
 final class SyncReport
 {
     /**
-     * @param list<string> $disabled        無効化したユーザ（username と理由）
-     * @param list<string> $enabled         有効に戻したユーザ
-     * @param list<string> $sessionsRevoked ログインの条件を満たさなくなり、セッションを終わらせたユーザ
+     * @param list<string> $disabled        users disabled (username and reason)
+     * @param list<string> $enabled         users re-enabled
+     * @param list<string> $sessionsRevoked users whose sessions were ended for no longer meeting the requirement to sign in
      */
     public function __construct(
         public readonly bool $dryRun,
@@ -20,7 +20,7 @@ final class SyncReport
         public readonly array $enabled,
         public readonly array $sessionsRevoked,
         public readonly int $refreshed,
-        /** dry-run で、実際の実行なら止まる理由。止まらなければ null */
+        /** for a dry run, why a real run would stop. null when it would not */
         public readonly ?string $refusal = null,
     ) {
     }

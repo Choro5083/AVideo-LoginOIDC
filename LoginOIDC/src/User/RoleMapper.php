@@ -9,17 +9,17 @@ use LoginOIDC\Claims\ClaimPath;
 use LoginOIDC\Settings;
 use LoginOIDC\UserFlag;
 
-/** claim から、AVideo のフラグと user group を決める。 */
+/** Decides AVideo's flags and user groups from the claims. */
 final class RoleMapper
 {
     /**
-     * 管理対象のフラグについて、付けるかどうかを返す。
+     * Says, for each managed flag, whether to grant it.
      *
-     * 管理対象でないフラグは結果に含めない（呼ぶ側はそれらに触れない）。
-     * claim が無い、または空なら、管理対象のフラグはすべて false になる。
+     * Flags that are not managed are left out of the result (the caller does not touch them).
+     * When the claim is missing or empty, every managed flag is false.
      *
      * @param  array<string, mixed> $claims
-     * @return array<string, bool> UserFlag の値 → 付けるかどうか
+     * @return array<string, bool> UserFlag value → whether to grant it
      */
     public static function flags(Settings $settings, array $claims): array
     {
@@ -43,10 +43,10 @@ final class RoleMapper
     }
 
     /**
-     * 管理対象の user group について、足すものと外すものを返す。
+     * Says which managed user groups to add and which to remove.
      *
      * @param  array<string, mixed> $claims
-     * @return array{list<int>, list<int>} [足す group, 外す group]
+     * @return array{list<int>, list<int>} [groups to add, groups to remove]
      */
     public static function groups(Settings $settings, array $claims): array
     {
@@ -68,7 +68,7 @@ final class RoleMapper
     }
 
     /**
-     * ログインに必要な条件を満たしているか。条件が設定されていなければ true。
+     * Whether the requirement to sign in is met. true when none is configured.
      *
      * @param array<string, mixed> $claims
      */

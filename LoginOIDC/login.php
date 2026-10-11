@@ -1,7 +1,7 @@
 <?php
 // SPDX-License-Identifier: MIT
 
-// ログインの入口。認可リクエストを組み立てて IdP へリダイレクトする。
+// Entry point of the sign-in. Builds the authorization request and redirects to the provider.
 
 declare(strict_types=1);
 
@@ -14,11 +14,11 @@ require_once __DIR__ . '/bootstrap.php';
 loginOidcRequireEnabled();
 loginOidcRateLimit('loginoidc_login');
 
-// 戻り先は returnTo で受ける。本体は redirectUri という名前の引数を、絶対 URL でなければ捨て、
-// HTML 用にエスケープして書き換える（objects/security.php）ので、その名前は使わない。
+// The return address comes in "returnTo". AVideo drops a parameter named "redirectUri" unless it is
+// an absolute URL, and rewrites it escaped for HTML (objects/security.php), so that name is avoided.
 $returnTo = $_GET['returnTo'] ?? '';
 if (!is_string($returnTo) || !isSafeRedirectURL($returnTo)) {
-    // 外部の URL へ戻すと、ログイン直後の利用者を別のサイトへ誘導できてしまう。
+    // Returning to an external URL would let someone send a freshly signed-in user to another site.
     $returnTo = $global['webSiteRootURL'];
 }
 

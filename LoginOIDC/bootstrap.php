@@ -1,7 +1,7 @@
 <?php
 // SPDX-License-Identifier: MIT
 
-// プラグインの各エンドポイント（login.php、callback.php など）が共通で使う処理。
+// Shared by the plugin's endpoints (login.php, callback.php and so on).
 
 declare(strict_types=1);
 
@@ -10,7 +10,7 @@ use LoginOIDC\Factory;
 use LoginOIDC\InvalidSettingException;
 use LoginOIDC\Oidc\LoginFlow;
 
-/** プラグインが無効、または設定が済んでいなければ止める。 */
+/** Stops unless the plugin is enabled and configured. */
 function loginOidcRequireEnabled(): void
 {
     if (empty(AVideoPlugin::loadPluginIfEnabled('LoginOIDC'))) {
@@ -26,7 +26,7 @@ function loginOidcRequireEnabled(): void
     }
 }
 
-/** 同じ接続元からの回数を、設定の上限で制限する。上限が 0 なら制限しない。 */
+/** Limits requests from one address to the configured number. 0 means no limit. */
 function loginOidcRateLimit(string $operation): void
 {
     try {
@@ -50,11 +50,11 @@ function loginOidcFlow(): LoginFlow
 }
 
 /**
- * エラーの画面を出して止める。
+ * Shows an error page and stops.
  *
- * 本体の forbiddenPage() は使わない。未ログインの利用者をログイン画面へ飛ばし、
- * ログイン後に元の URL へ戻す作りのため、ログインの失敗に使うと、失敗した
- * コールバックへ戻ってきてしまう。
+ * AVideo's own forbiddenPage() is not used. It sends an anonymous visitor to the sign-in
+ * page and back to the original URL afterwards, so a failed sign-in would come back
+ * to the failed callback.
  */
 function loginOidcShowError(string $message): never
 {
@@ -68,17 +68,17 @@ function loginOidcShowError(string $message): never
 }
 
 /**
- * 失敗を記録して止める。
+ * Logs the failure and stops.
  *
- * 詳細はログにだけ出す。IdP の応答や検証の内容を含むことがあり、
- * 利用者の画面に出すと攻撃の手がかりになるため。画面には、ログの行を
- * 探すための番号だけを出す。
+ * The details go to the log only. They can contain the provider's response and what
+ * exactly failed to verify, which would help an attacker. The page shows only a
+ * reference to find the log line.
  */
 function loginOidcFail(string $summary, \Throwable $e, string $userMessage = 'Sign-in failed. Please try again.'): never
 {
     $reference = bin2hex(random_bytes(4));
     _error_log("LoginOIDC [{$reference}]: {$summary}: {$e->getMessage()}", AVideoLog::$ERROR);
-    // 画面の文言は翻訳する。ログは、どの言語の利用者でも同じになるように英語のままにする。
+    // The page is translated. The log stays in English so it reads the same whatever the visitor's language.
     loginOidcShowError(
         LoginOIDC::t($userMessage) . ' '
         . sprintf(LoginOIDC::t('If the problem persists, contact the administrator with this reference: %s'), $reference),

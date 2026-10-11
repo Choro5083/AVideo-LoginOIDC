@@ -12,16 +12,16 @@ use LoginOIDC\Oidc\ClientAuthenticator;
 use LoginOIDC\SyncRoleSource;
 
 /**
- * Keycloak の Admin REST API でユーザを調べる。
+ * Looks users up through Keycloak's Admin REST API.
  *
- * ID Token の sub が Keycloak のユーザ ID であること（Keycloak の既定）を前提にする。
+ * Assumes the sub of the ID Token is the Keycloak user ID (Keycloak's default).
  *
- * 必要な権限（realm-management の role）は、読む割り当ての種類で変わる。
- * - group:       view-users、query-users
- * - realm role:  上に加えて view-realm
- * - client role: 上に加えて view-clients、query-clients
- * view-clients は、realm の全 client の設定（シークレットを含む）を読める。
- * 権限を小さくしたいなら、group を使う。
+ * The permissions needed (roles of realm-management) depend on what is read.
+ * - groups:      view-users and query-users
+ * - realm roles:  the above plus view-realm
+ * - client roles: the above plus view-clients and query-clients
+ * view-clients can read the configuration of every client in the realm, secrets included.
+ * To keep the permissions small, use groups.
  */
 final class KeycloakDirectory implements RemoteDirectory
 {
@@ -32,14 +32,14 @@ final class KeycloakDirectory implements RemoteDirectory
         private readonly HttpClient $http,
         private readonly ClientAuthenticator $authenticator,
         private readonly string $tokenEndpoint,
-        /** 例: https://idp.example.com/admin/realms/example */
+        /** for example https://idp.example.com/admin/realms/example */
         private readonly string $adminUrl,
         private readonly SyncRoleSource $roleSource,
         private readonly string $roleClientId,
     ) {
     }
 
-    /** issuer（.../realms/<名前>）から Admin API の URL を導く。導けなければ空文字。 */
+    /** Derives the Admin API URL from the issuer (.../realms/<name>). An empty string when it cannot. */
     public static function adminUrlFromIssuer(string $issuer): string
     {
         $position = strrpos($issuer, '/realms/');
@@ -52,7 +52,7 @@ final class KeycloakDirectory implements RemoteDirectory
     public function lookup(string $subject): ?RemoteUser
     {
         $response = $this->get('/users/' . rawurlencode($subject));
-        // 「いない」と言えるのは 404 だけ。それ以外の失敗を「いない」と取り違えると、ユーザを無効化してしまう。
+        // Only a 404 means "gone". Mistaking any other failure for it would disable the user.
         if ($response->status === 404) {
             return null;
         }
@@ -78,8 +78,8 @@ final class KeycloakDirectory implements RemoteDirectory
     }
 
     /**
-     * 所属する group の名前とパスの両方を返す。IdP が claim にどちらを入れるかは
-     * マッパーの設定によるので、どちらで対応表を書いていても合うようにする。
+     * Returns both the names and the paths of the user's groups. Which of them the provider puts
+     * in the claim depends on its mapper, so a mapping written with either one matches.
      *
      * @return list<string>
      */

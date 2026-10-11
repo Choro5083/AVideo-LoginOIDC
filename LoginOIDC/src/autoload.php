@@ -3,7 +3,7 @@
 
 declare(strict_types=1);
 
-// AVideo 本体の vendor/ とは別に、このプラグインのクラスだけを読み込む。
+// Loads only this plugin's classes, separately from AVideo's own vendor/.
 spl_autoload_register(static function (string $class): void {
     $prefix = 'LoginOIDC\\';
     if (!str_starts_with($class, $prefix)) {

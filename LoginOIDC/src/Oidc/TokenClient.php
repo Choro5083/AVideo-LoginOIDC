@@ -8,7 +8,7 @@ namespace LoginOIDC\Oidc;
 use LoginOIDC\Http\HttpClient;
 use LoginOIDC\Http\HttpException;
 
-/** 認可コードをトークンに交換する。 */
+/** Exchanges the authorization code for tokens. */
 final class TokenClient
 {
     public function __construct(
@@ -17,7 +17,7 @@ final class TokenClient
     ) {
     }
 
-    /** @throws OidcException 交換できなかったとき */
+    /** @throws OidcException when the exchange fails */
     public function exchangeCode(
         ProviderMetadata $metadata,
         string $code,
@@ -49,7 +49,7 @@ final class TokenClient
         }
 
         if (!$response->isSuccess()) {
-            // error と error_description は IdP が返す説明で、秘密を含まない（RFC 6749 の 5.2 節）。
+            // error and error_description are the provider's explanation and contain no secrets (RFC 6749, section 5.2).
             $error = is_string($body['error'] ?? null) ? $body['error'] : 'unknown';
             $description = is_string($body['error_description'] ?? null) ? " ({$body['error_description']})" : '';
             throw new OidcException("token exchange was rejected (HTTP {$response->status}): {$error}{$description}");

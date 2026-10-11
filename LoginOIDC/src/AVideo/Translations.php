@@ -6,15 +6,15 @@ declare(strict_types=1);
 namespace LoginOIDC\AVideo;
 
 /**
- * プラグインの文言を、本体の翻訳の仕組みに足す。
+ * Adds the plugin's texts to AVideo's translation mechanism.
  *
- * 本体は、英語の文言をキーにして、言語ごとの配列（グローバルの $t）で置き換える（__() 関数）。
- * 言語のファイルは本体の locale/ にしか置けないので、プラグインの分は、ここで $t に足す。
- * 英語は、コードに書いた文言がそのまま出る。
+ * AVideo uses the English text as the key and replaces it from a per-language array (the global $t) in __().
+ * Language files can only live in AVideo's own locale/, so the plugin's texts are added to $t here.
+ * English needs no file: the texts in the code are shown as they are.
  */
 final class Translations
 {
-    /** @param string $directory 言語ごとのファイル（例: ja_JP.php）を置いたディレクトリ */
+    /** @param string $directory directory that holds one file per language (for example ja_JP.php) */
     public static function register(string $directory): void
     {
         global $t;
@@ -25,18 +25,18 @@ final class Translations
         }
         $texts = require $file;
         if (is_array($texts)) {
-            // 本体の文言は上書きしない。同じキーがあれば、本体の訳を使う。
+            // Never override AVideo's own texts. If a key exists already, AVideo's translation wins.
             $t = (is_array($t) ? $t : []) + $texts;
         }
     }
 
     /**
-     * 言語のコードに合うファイルを探す。完全に一致するものが無ければ、言語の部分が同じものを使う
-     * （「ja」に対して ja_JP.php）。
+     * Finds the file for a language code. Without an exact match, a file for the same language is used
+     * (ja_JP.php for "ja").
      */
     public static function fileFor(string $directory, string $language): ?string
     {
-        // 言語のコードは、セッションや URL から来る。ファイル名に使う前に、形を確かめる。
+        // The language code comes from the session or the URL. Check its shape before using it in a file name.
         if (preg_match('/^[A-Za-z]{2,3}(_[A-Za-z0-9]+)*$/', $language) !== 1) {
             return null;
         }

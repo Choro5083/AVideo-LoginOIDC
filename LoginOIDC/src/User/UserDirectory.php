@@ -7,36 +7,36 @@ namespace LoginOIDC\User;
 
 use LoginOIDC\UserFlag;
 
-/** AVideo のユーザの読み書き。 */
+/** Reads and writes AVideo users. */
 interface UserDirectory
 {
     public function find(int $userId): ?LocalUser;
 
     public function usernameExists(string $username): bool;
 
-    /** ユーザを作り、ID を返す。パスワードには、誰にも知らせない乱数を入れる。 */
+    /** Creates a user and returns the ID. The password is random and known to nobody. */
     public function create(NewUser $user): int;
 
     /**
-     * 渡した項目だけを更新する。null の項目には触れない。
+     * Updates only the fields given. null leaves a field untouched.
      */
     public function updateProfile(int $userId, ?string $name, ?string $email, ?bool $emailVerified): void;
 
     /**
-     * 渡したフラグだけを更新する。渡さなかったフラグには触れない。
+     * Updates only the flags given. Flags that are not passed are left untouched.
      *
-     * @param array<string, bool> $flags UserFlag の値 → 付けるかどうか
+     * @param array<string, bool> $flags UserFlag value → whether to grant it
      */
     public function setFlags(int $userId, array $flags): void;
 
     /**
-     * user group を足し引きする。渡さなかった group には触れない。
+     * Adds and removes user groups. Groups that are not passed are left untouched.
      *
      * @param list<int> $add
      * @param list<int> $remove
      */
     public function changeGroups(int $userId, array $add, array $remove): void;
 
-    /** ユーザを有効・無効にする。削除はしない。 */
+    /** Enables or disables a user. Never deletes. */
     public function setActive(int $userId, bool $active): void;
 }

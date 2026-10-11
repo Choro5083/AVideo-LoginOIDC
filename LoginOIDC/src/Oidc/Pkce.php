@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Oidc;
 
-/** PKCE（RFC 7636）の verifier と challenge。方式は S256 だけを使う。 */
+/** Verifier and challenge of PKCE (RFC 7636). Only S256 is used. */
 final class Pkce
 {
     public function __construct(

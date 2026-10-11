@@ -12,10 +12,10 @@ use LoginOIDC\User\RoleMapper;
 use LoginOIDC\User\UserDirectory;
 
 /**
- * IdP 側の変化（削除、無効化、権限の剥奪、属性の変更）を AVideo に反映する。
+ * Applies changes at the provider (deleted, disabled, permissions removed, attributes changed) to AVideo.
  *
- * 対象は IdP に紐付いたユーザだけ。ユーザは作らない（作成は初回ログイン時だけ）。
- * 行うのはユーザの無効化までで、動画には触れない。
+ * Only users linked to the provider are touched. No users are created (that happens on first sign-in only).
+ * It goes no further than disabling a user. Videos are never touched.
  */
 final class Synchronizer
 {
@@ -29,16 +29,16 @@ final class Synchronizer
     }
 
     /**
-     * @param  int|null $maxDisableRatio 1回で無効化してよい割合（%）。null なら設定の値
-     * @throws SyncException 続けられないとき。何も変更していない
+     * @param  int|null $maxDisableRatio share of users one run may disable (%). null uses the setting
+     * @throws SyncException when it cannot continue. Nothing has been changed
      */
     public function run(bool $dryRun, ?int $maxDisableRatio = null, ?int $now = null): SyncReport
     {
         $now ??= time();
         $linked = $this->identities->allLinked($this->settings->issuer);
 
-        // 先に全員の状態を調べ終える。途中で API が失敗したら、何も変更せずに止める。
-        // 通信の失敗を「ユーザがいない」と取り違えて無効化するのを防ぐ。
+        // Look everyone up first. If the API fails on the way, stop without changing anything.
+        // This keeps a network failure from being mistaken for "the user is gone".
         $remote = [];
         foreach ($linked as $identity) {
             $remote[$identity->userId] = $this->remote->lookup($identity->subject);
@@ -53,7 +53,7 @@ final class Synchronizer
             if ($identity->active && !$usable) {
                 $toDisable[] = [$identity, $state === null ? 'deleted at the provider' : 'disabled at the provider'];
             } elseif (!$identity->active && $identity->disabledBySync && $usable) {
-                // 有効に戻すのは、同期が無効化したユーザだけ。管理者が手で無効化したユーザは戻さない。
+                // Only users the sync disabled are re-enabled. Users an admin disabled by hand stay disabled.
                 $toEnable[] = $identity;
                 $toRefresh[] = [$identity, $state];
             } elseif ($identity->active && $state !== null) {
@@ -66,7 +66,7 @@ final class Synchronizer
             count(array_filter($linked, static fn (LinkedIdentity $i): bool => $i->active)),
             $maxDisableRatio ?? $this->settings->syncMaxDisableRatio,
         );
-        // dry-run では止めずに、止まる理由を結果に載せる。何が起きるかを確かめるための実行なので。
+        // A dry run does not stop. It reports why a real run would. Its whole purpose is to show what would happen.
         if ($refusal !== null && !$dryRun) {
             throw new SyncException($refusal);
         }
@@ -121,15 +121,15 @@ final class Synchronizer
         [$add, $remove] = RoleMapper::groups($this->settings, $claims);
         $this->users->changeGroups($identity->userId, $add, $remove);
 
-        // ログインに必要な条件を満たさなくなった人は、次のログインで拒否される。
-        // 今のセッションも終わらせる。アカウントは無効にしない（条件を満たせばまたログインできる）。
+        // Someone who no longer meets the requirement to sign in is refused at the next sign-in.
+        // End the current sessions too. The account stays enabled (meeting the requirement again lets them back in).
         if (!RoleMapper::meetsRequirement($this->settings, $claims)) {
             $this->sessions->revokeAllOfUser($identity->userId, $now);
         }
     }
 
     /**
-     * ログイン時の claim と同じ形にする。こうしておけば、権限の決め方はログイン時と同じものを使える。
+     * Shapes the values like the claims of a sign-in, so the same rules decide the permissions.
      *
      * @return array<string, list<string>>
      */
@@ -141,7 +141,7 @@ final class Synchronizer
                 $claims[$path] = $state->roleValues;
             }
         }
-        // user group 用の claim が権限用と同じなら、同じ値を使う。違うなら、IdP の group を使う。
+        // If the claim for user groups is the one for permissions, use the same values. Otherwise use the provider's groups.
         if ($this->settings->groupsClaimPath !== '' && !isset($claims[$this->settings->groupsClaimPath])) {
             $claims[$this->settings->groupsClaimPath] = $state->groupValues;
         }
@@ -149,7 +149,7 @@ final class Synchronizer
         return $claims;
     }
 
-    /** 無効化の割合が上限を超えていれば、その説明を返す。超えていなければ null。 */
+    /** Explains the problem when the share to disable is over the limit. null when it is not. */
     private static function disableRatioProblem(int $disabling, int $active, int $maxRatio): ?string
     {
         if ($disabling === 0 || $active === 0) {

@@ -6,11 +6,11 @@ declare(strict_types=1);
 namespace LoginOIDC\Oidc;
 
 /**
- * 認可リクエストを送ってからコールバックが来るまで、セッションに持っておく値。
+ * What is kept in the session between sending the authorization request and the callback.
  */
 final class PendingLogin
 {
-    /** これより古いものは受け付けない。IdP のログイン画面で放置された分を捨てる。 */
+    /** Older ones are refused. Drops sign-ins left sitting on the provider's sign-in page. */
     public const MAX_AGE_SECONDS = 600;
 
     public function __construct(
@@ -34,7 +34,7 @@ final class PendingLogin
         ];
     }
 
-    /** セッションから読んだ値を戻す。形が違えば null。 */
+    /** Restores a value read from the session. null when the shape is wrong. */
     public static function fromArray(mixed $data): ?self
     {
         if (

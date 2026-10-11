@@ -1,8 +1,8 @@
 <?php
 // SPDX-License-Identifier: MIT
 
-// IdP からのログアウトの通知（OpenID Connect Back-Channel Logout 1.0）。
-// 呼ぶのは IdP のサーバで、利用者のブラウザではない。
+// Logout notice from the provider (OpenID Connect Back-Channel Logout 1.0).
+// It is called by the provider's server, not by the user's browser.
 
 declare(strict_types=1);
 
@@ -53,8 +53,8 @@ try {
     $registry = new SessionRegistry();
     $now = time();
     $ended = $notice->sessionId === '' ? 0 : $registry->revokeSession($notice->sessionId, $now);
-    // sid が無い、または sid に当たるセッションの記録が無いときは、その人の全セッションを終わらせる。
-    // 記録が古くて消えている場合に、ログアウトが効かないまま残るのを避ける。
+    // Without a sid, or when no session is recorded for the sid, end every session of that person.
+    // Otherwise a logout would silently do nothing once the record has been cleaned up.
     if ($ended === 0 && $notice->subject !== '') {
         $registry->revokeAllOfSubject($notice->issuer, $notice->subject, $now);
         $scope = 'all sessions of sub ' . $notice->subject;

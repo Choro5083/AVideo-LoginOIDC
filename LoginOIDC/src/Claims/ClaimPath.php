@@ -5,14 +5,14 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Claims;
 
-/** ドット区切りのパスで claim を読む（例: resource_access.avideo.roles）。 */
+/** Reads claims by a dot-separated path (for example resource_access.avideo.roles). */
 final class ClaimPath
 {
     /**
-     * パスの先にある値を、文字列の一覧として返す。
+     * Returns the value at the path as a list of strings.
      *
-     * 値が配列なら文字列の要素を、文字列なら1要素の一覧を返す。パスが無い、
-     * または値が文字列でも配列でもなければ、空の一覧を返す。
+     * An array gives its string elements, a string gives a one-element list. A missing path,
+     * or a value that is neither a string nor an array, gives an empty list.
      *
      * @param  array<string, mixed> $claims
      * @return list<string>
@@ -31,7 +31,7 @@ final class ClaimPath
     }
 
     /**
-     * パスの先にある文字列を返す。無い、または文字列でなければ空文字。
+     * Returns the string at the path. An empty string when it is missing or not a string.
      *
      * @param array<string, mixed> $claims
      */
@@ -43,9 +43,9 @@ final class ClaimPath
     }
 
     /**
-     * キー自体がドットを含むことがある（Keycloak の client ID が「my.client」のとき、
-     * resource_access.my.client.roles になる）。各階層で、残りのパスの長い方から
-     * キーとして試す。
+     * A key can contain dots itself (a Keycloak client ID "my.client" gives
+     * resource_access.my.client.roles). At each level, the longest prefix of the
+     * remaining path is tried as the key first.
      *
      * @param array<mixed> $node
      */

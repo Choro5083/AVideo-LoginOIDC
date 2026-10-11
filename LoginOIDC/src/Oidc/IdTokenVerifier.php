@@ -6,9 +6,9 @@ declare(strict_types=1);
 namespace LoginOIDC\Oidc;
 
 /**
- * ID Token を検証する（OpenID Connect Core 1.0 の 3.1.3.7 節）。
+ * Verifies an ID Token (OpenID Connect Core 1.0, section 3.1.3.7).
  *
- * 署名と有効期限の検証は JwtVerifier が行う。ここでは claim の内容を検証する。
+ * JwtVerifier checks the signature and the expiry. The claims themselves are checked here.
  */
 final class IdTokenVerifier
 {
@@ -17,10 +17,10 @@ final class IdTokenVerifier
     }
 
     /**
-     * @param  string   $expectedNonce 認可リクエストで送った nonce
-     * @param  int|null $now           現在時刻（テスト用。省略時は time()）
-     * @return array<string, mixed>    検証済みの claim
-     * @throws OidcException 検証に失敗したとき
+     * @param  string   $expectedNonce nonce sent in the authorization request
+     * @param  int|null $now           current time (for tests; time() when omitted)
+     * @return array<string, mixed>    verified claims
+     * @throws OidcException when verification fails
      */
     public function verify(
         #[\SensitiveParameter] string $idToken,
@@ -56,13 +56,13 @@ final class IdTokenVerifier
         if (!in_array($clientId, $audiences, true)) {
             throw new OidcException('ID Token aud does not contain this client');
         }
-        // 宛先が複数あるトークンは、azp がこの client でなければ受け入れない。
+        // A token for several audiences is accepted only when azp is this client.
         $azp = $claims['azp'] ?? null;
         if ((count($audiences) > 1 || $azp !== null) && $azp !== $clientId) {
             throw new OidcException('ID Token azp does not match this client');
         }
 
-        // exp と iat は必須。ライブラリは「あれば期限を検証する」だけなので、有無はここで見る。
+        // exp and iat are required. The library only checks the expiry when present, so their presence is checked here.
         if (!is_numeric($claims['exp'] ?? null) || !is_numeric($claims['iat'] ?? null)) {
             throw new OidcException('ID Token has no exp or iat');
         }

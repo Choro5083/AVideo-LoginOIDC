@@ -8,7 +8,7 @@ namespace LoginOIDC\Session;
 final class SessionPolicy
 {
     /**
-     * セッションを終わらせるべき理由を返す。続けてよければ null。
+     * Returns why the session must end, or null when it may continue.
      */
     public static function reasonToEnd(SessionMarker $marker, SessionState $state): ?string
     {
@@ -18,7 +18,7 @@ final class SessionPolicy
         if ($state->sessionRevoked) {
             return 'the provider session was logged out';
         }
-        // 無効化と同じ秒のログインも終わらせる。どちらが先か分からないときは、安全な側に倒す。
+        // A sign-in in the same second as the revocation ends too. When the order is unknown, stay on the safe side.
         if ($state->allRevokedAt !== null && $marker->loginAt <= $state->allRevokedAt) {
             return 'all sessions of the user were logged out';
         }

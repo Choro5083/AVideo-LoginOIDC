@@ -7,6 +7,6 @@ namespace LoginOIDC\Session;
 
 interface SessionRevoker
 {
-    /** ユーザの、この時刻までに始まったセッションをすべて終わらせる。 */
+    /** Ends every session of the user that started up to this moment. */
     public function revokeAllOfUser(int $userId, int $now): int;
 }

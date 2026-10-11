@@ -1,15 +1,15 @@
 <?php
 // SPDX-License-Identifier: MIT
 
-// Keycloak 側の変化（削除、無効化、権限の剥奪、属性の変更）を AVideo に反映する。
-// cron から実行する。
+// Applies changes made at Keycloak (deleted, disabled, permissions removed, attributes changed) to AVideo.
+// Run it from cron.
 //
 //   php plugin/LoginOIDC/cli/sync.php [--dry-run] [--max-disable-ratio=<0-100>]
 //
-// 同期用の client のシークレットは、設定のファイルか、環境変数
-// LOGINOIDC_SYNC_CLIENT_SECRET で渡す。
+// The secret of the sync client comes from the file named in the settings, or from the
+// environment variable LOGINOIDC_SYNC_CLIENT_SECRET.
 //
-// 終了コード: 0 = 成功、1 = 失敗（何も変更していない）、2 = 使い方の誤り、3 = 別の同期が実行中
+// Exit codes: 0 = success, 1 = failure (nothing was changed), 2 = usage error, 3 = another sync is running
 
 declare(strict_types=1);
 
@@ -52,7 +52,7 @@ if (empty(AVideoPlugin::loadPluginIfEnabled('LoginOIDC'))) {
     $fail('the plugin is disabled');
 }
 
-// 前の実行が終わっていなければ、重ねて走らせない。
+// Do not start while the previous run is still going.
 $lockFile = rtrim(sys_get_temp_dir(), '/') . '/loginoidc-sync-' . md5(__DIR__) . '.lock';
 $lock = fopen($lockFile, 'c');
 if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
@@ -70,10 +70,10 @@ try {
         (string) (getenv('LOGINOIDC_SYNC_CLIENT_SECRET') ?: ''),
     )->run(isset($options['dry-run']), $maxRatio);
 } catch (SyncException | InvalidSettingException | OidcException $e) {
-    // ここに来るのは、変更を始める前に止まった場合だけ。
+    // Only reached when the sync stopped before changing anything.
     $fail($e->getMessage() . ' (nothing was changed)');
 } catch (DbException $e) {
-    // 変更の途中で止まった可能性がある。次の実行で残りが反映される。
+    // It may have stopped part-way. The next run applies the rest.
     $fail('database error, the sync may have stopped part-way: ' . $e->getMessage());
 }
 

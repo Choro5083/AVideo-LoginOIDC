@@ -6,19 +6,19 @@ declare(strict_types=1);
 namespace LoginOIDC\Session;
 
 /**
- * IdP 経由でログインしたことを示す、PHP のセッションに置く印。
+ * A marker in the PHP session saying that the user signed in through the provider.
  *
- * これがあるセッションだけを、ログアウトの連動（RP-Initiated、Back-Channel）と
- * 無効化の確認の対象にする。
+ * Only sessions that carry it take part in logout linking (RP-Initiated, Back-Channel)
+ * and in the revocation check.
  */
 final class SessionMarker
 {
     public function __construct(
         public readonly int $userId,
-        /** IdP のセッションの ID。IdP が返さなければ空文字 */
+        /** ID of the provider session. An empty string when the provider sent none */
         public readonly string $sessionId,
         public readonly int $loginAt,
-        /** ログアウト時に id_token_hint として IdP に渡す */
+        /** passed to the provider as id_token_hint at logout */
         #[\SensitiveParameter] public readonly string $idToken,
     ) {
     }
@@ -34,7 +34,7 @@ final class SessionMarker
         ];
     }
 
-    /** セッションから読んだ値を戻す。形が違えば null。 */
+    /** Restores a value read from the session. null when the shape is wrong. */
     public static function fromArray(mixed $data): ?self
     {
         if (

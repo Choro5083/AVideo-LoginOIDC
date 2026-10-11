@@ -5,15 +5,15 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Session;
 
-/** 自動リダイレクトの判定に使う、リクエストの情報。 */
+/** What the automatic redirect needs to know about a request. */
 final class PageRequest
 {
     public function __construct(
         public readonly string $method,
-        /** 実行されているスクリプトのパス（例: /view/user.php） */
+        /** path of the running script (for example /view/user.php) */
         public readonly string $scriptName,
         public readonly string $accept,
-        /** JavaScript からのリクエストか（X-Requested-With: XMLHttpRequest） */
+        /** whether the request comes from JavaScript (X-Requested-With: XMLHttpRequest) */
         public readonly bool $ajax,
         public readonly string $remoteAddress,
     ) {

@@ -26,7 +26,7 @@ use LoginOIDC\Sync\KeycloakDirectory;
 use LoginOIDC\Sync\Synchronizer;
 use LoginOIDC\User\Provisioner;
 
-/** 設定から、処理に使うオブジェクトを組み立てる。 */
+/** Builds the objects that do the work from the settings. */
 final class Factory
 {
     public static function httpClient(Settings $settings): HttpClient
@@ -34,7 +34,7 @@ final class Factory
         return new CurlHttpClient($settings->caCertFile);
     }
 
-    /** @throws InvalidSettingException シークレットを読めないとき */
+    /** @throws InvalidSettingException when the secret cannot be read */
     public static function clientAuthenticator(Settings $settings): ClientAuthenticator
     {
         $secret = $settings->resolveClientSecret();
@@ -75,9 +75,9 @@ final class Factory
     }
 
     /**
-     * @param  string $syncSecretFromEnvironment 環境変数 LOGINOIDC_SYNC_CLIENT_SECRET の値
+     * @param  string $syncSecretFromEnvironment value of the environment variable LOGINOIDC_SYNC_CLIENT_SECRET
      * @throws InvalidSettingException
-     * @throws \LoginOIDC\Oidc\OidcException Discovery に失敗したとき
+     * @throws \LoginOIDC\Oidc\OidcException when discovery fails
      */
     public static function synchronizer(Settings $settings, Cache $cache, string $syncSecretFromEnvironment): Synchronizer
     {

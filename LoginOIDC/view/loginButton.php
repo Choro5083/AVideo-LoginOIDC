@@ -1,11 +1,11 @@
 <?php
 // SPDX-License-Identifier: MIT
 
-// ログイン画面（view/userLogin.php）から読み込まれる。
+// Included by the sign-in page (view/userLogin.php).
 global $global;
 
 try {
-    // 既定のラベルには訳がある。利用者が書き換えたラベルは、訳が無いのでそのまま出る。
+    // The default label has translations. A label the admin changed has none and is shown as it is.
     $loginOidcLabel = LoginOIDC::t(LoginOIDC::settings()->buttonLabel);
 } catch (\LoginOIDC\InvalidSettingException $e) {
     _error_log('LoginOIDC: sign-in button hidden because the settings are invalid: ' . $e->getMessage(), AVideoLog::$ERROR);
@@ -13,8 +13,8 @@ try {
     return;
 }
 $loginOidcUrl = $global['webSiteRootURL'] . 'plugin/LoginOIDC/login.php';
-// 本体のログイン画面は、ログイン後の戻り先を redirectUri で持っている。本体がすでに
-// HTML 用にエスケープしているので、元に戻してから渡す（login.php が安全な URL かを確かめる）。
+// AVideo's sign-in page keeps the address to return to in redirectUri, already escaped for HTML.
+// Undo the escaping before passing it on (login.php checks that it is a safe URL).
 if (!empty($_GET['redirectUri']) && is_string($_GET['redirectUri'])) {
     $loginOidcUrl .= '?' . http_build_query(['returnTo' => html_entity_decode($_GET['redirectUri'], ENT_QUOTES, 'UTF-8')]);
 }

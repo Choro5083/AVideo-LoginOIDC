@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Http;
 
-/** 通信そのものが失敗した、または応答を読めなかった。 */
+/** The request itself failed, or the response could not be read. */
 final class HttpException extends \RuntimeException
 {
 }

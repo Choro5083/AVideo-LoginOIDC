@@ -6,11 +6,11 @@ declare(strict_types=1);
 namespace LoginOIDC\AVideo;
 
 /**
- * AVideo が開いている DB 接続で、プリペアドステートメントを実行する。
+ * Runs prepared statements on the database connection AVideo has open.
  *
- * 本体の sqlDAL は結果をキャッシュしたり、失敗を握りつぶしたりする箇所がある。
- * このプラグインのテーブルと、列を絞った更新には、接続を直接使う。
- * 接続は本体と同じものなので、本体の処理と同じトランザクションに入る。
+ * AVideo's sqlDAL caches results and swallows failures in places. For this plugin's
+ * tables and for updates limited to specific columns, the connection is used directly.
+ * It is the same connection, so the statements join AVideo's own transaction.
  */
 final class Db
 {
@@ -48,7 +48,7 @@ final class Db
 
     /**
      * @param  list<int|string|null> $params
-     * @return int 変更された行数
+     * @return int number of affected rows
      * @throws DbException
      */
     public static function execute(string $sql, string $types = '', array $params = []): int
@@ -67,7 +67,7 @@ final class Db
     private static function run(string $sql, string $types, array $params): \mysqli_stmt
     {
         $connection = self::connection();
-        // 接続のエラーの扱い（例外を投げるか、false を返すか）は本体の設定による。両方を受ける。
+        // Whether the connection throws or returns false on errors depends on AVideo's settings. Handle both.
         try {
             $statement = $connection->prepare($sql);
             if ($statement === false) {

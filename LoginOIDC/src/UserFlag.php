@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC;
 
-/** プラグインが管理できる AVideo の権限フラグ。値は users テーブルの列名。 */
+/** The AVideo permission flags this plugin can manage. The values are column names of the users table. */
 enum UserFlag: string
 {
     case IsAdmin = 'isAdmin';

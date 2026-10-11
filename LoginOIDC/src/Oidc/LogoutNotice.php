@@ -5,14 +5,14 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Oidc;
 
-/** 検証済みの Logout Token が指すもの。sid と sub の少なくとも片方がある。 */
+/** What a verified Logout Token points at. At least one of sid and sub is present. */
 final class LogoutNotice
 {
     public function __construct(
         public readonly string $issuer,
-        /** 無ければ空文字 */
+        /** an empty string when absent */
         public readonly string $subject,
-        /** IdP のセッションの ID。無ければ空文字 */
+        /** ID of the provider session. An empty string when absent */
         public readonly string $sessionId,
     ) {
     }

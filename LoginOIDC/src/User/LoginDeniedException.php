@@ -6,9 +6,9 @@ declare(strict_types=1);
 namespace LoginOIDC\User;
 
 /**
- * IdP での認証は通ったが、AVideo へのログインは認めない。
+ * The provider authenticated the user, but signing in to AVideo is not allowed.
  *
- * メッセージは管理者向けのログ用。
+ * The message is for the admin's log.
  */
 final class LoginDeniedException extends \RuntimeException
 {

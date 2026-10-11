@@ -11,15 +11,15 @@ use LoginOIDC\User\UserDirectory;
 use LoginOIDC\UserFlag;
 
 /**
- * AVideo のユーザの読み書き。
+ * Reads and writes AVideo users.
  *
- * 作成は本体の User クラスに任せる（チャンネル名や既定値の決め方が本体にあるため）。
- * 更新は、対象の列だけを SQL で書き換える。User::save() は全部の列を書き戻すので、
- * このプラグインが管理していない列まで巻き込むおそれがある。
+ * Creation is left to AVideo's User class, which knows how to pick the channel name and the defaults.
+ * Updates rewrite only the columns concerned, in SQL. User::save() writes every column back,
+ * which could clobber columns this plugin does not manage.
  */
 final class AVideoUserDirectory implements UserDirectory
 {
-    /** users.name は VARCHAR(45) */
+    /** users.name is VARCHAR(45) */
     private const NAME_MAX_LENGTH = 45;
 
     public function find(int $userId): ?LocalUser
@@ -39,7 +39,7 @@ final class AVideoUserDirectory implements UserDirectory
 
     public function create(NewUser $user): int
     {
-        // パスワードは誰にも知らせない乱数。ネイティブログインには使えない。
+        // The password is random and known to nobody. It cannot be used for a native sign-in.
         $account = new \User(0, $user->username, encryptPassword(bin2hex(random_bytes(32))));
         $account->setName(self::cleanName($user->name) ?: $user->username);
         if ($user->email !== '') {
@@ -52,7 +52,7 @@ final class AVideoUserDirectory implements UserDirectory
             throw new \RuntimeException("AVideo could not create user {$user->username}");
         }
 
-        // 新規ユーザの既定の user group（本体の SNS ログインと同じ扱い）。
+        // Default user group for new users (the same as AVideo's social sign-in).
         $defaultGroup = (int) (\AVideoPlugin::getObjectData('CustomizeUser')->userDefaultUserGroup->value ?? 0);
         if ($defaultGroup > 0) {
             $this->changeGroups($userId, [$defaultGroup], []);
@@ -99,7 +99,7 @@ final class AVideoUserDirectory implements UserDirectory
         $columns = [];
         $params = [];
         foreach ($flags as $name => $enabled) {
-            // 列名は列挙型にあるものだけを使う（SQL に文字列を埋め込むため）。
+            // Column names come from the enum only, because they are put into the SQL text.
             $flag = UserFlag::from($name);
             $columns[] = "{$flag->value} = ?";
             $params[] = $enabled ? 1 : 0;

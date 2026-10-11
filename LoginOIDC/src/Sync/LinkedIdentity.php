@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Sync;
 
-/** IdP に紐付いた AVideo のユーザ。 */
+/** An AVideo user linked to the provider. */
 final class LinkedIdentity
 {
     public function __construct(
@@ -13,7 +13,7 @@ final class LinkedIdentity
         public readonly string $username,
         public readonly string $subject,
         public readonly bool $active,
-        /** 前回までの同期が無効化したユーザか */
+        /** whether an earlier sync disabled the user */
         public readonly bool $disabledBySync,
     ) {
     }

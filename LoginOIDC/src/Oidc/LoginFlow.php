@@ -6,10 +6,10 @@ declare(strict_types=1);
 namespace LoginOIDC\Oidc;
 
 /**
- * Authorization Code Flow + PKCE の流れ。
+ * The Authorization Code Flow with PKCE.
  *
- * セッションや HTTP の入出力には触れない。呼ぶ側が PendingLogin を保存し、
- * コールバックのクエリを渡す。
+ * It touches neither the session nor HTTP input and output. The caller stores the
+ * PendingLogin and passes in the query of the callback.
  */
 final class LoginFlow
 {
@@ -27,9 +27,9 @@ final class LoginFlow
     }
 
     /**
-     * 認可リクエストを組み立てる。
+     * Builds the authorization request.
      *
-     * @return array{string, PendingLogin} [IdP へのリダイレクト先, セッションに保存する値]
+     * @return array{string, PendingLogin} [URL to redirect to at the provider, value to keep in the session]
      * @throws OidcException
      */
     public function start(string $returnTo, ?int $now = null): array
@@ -60,17 +60,17 @@ final class LoginFlow
     }
 
     /**
-     * コールバックを処理し、認証の結果を検証する。
+     * Handles the callback and verifies the result of the authentication.
      *
-     * @param  PendingLogin|null     $pending セッションから読んだ値。無ければ null
-     * @param  array<string, mixed>  $query   コールバックのクエリ
-     * @throws OidcException 検証に失敗したとき
+     * @param  PendingLogin|null     $pending value read from the session, or null
+     * @param  array<string, mixed>  $query   query of the callback
+     * @throws OidcException when verification fails
      */
     public function finish(?PendingLogin $pending, array $query, ?int $now = null): VerifiedLogin
     {
         $now ??= time();
 
-        // state の照合を最初に行う。一致しないリクエストは、こちらが始めたログインではない。
+        // Compare the state first. A request that does not match is not a sign-in we started.
         $state = $query['state'] ?? null;
         if ($pending === null || !is_string($state) || !hash_equals($pending->state, $state)) {
             throw new OidcException('state does not match (the sign-in must be restarted)');
@@ -96,7 +96,7 @@ final class LoginFlow
         $subject = (string) $claims['sub'];
 
         if ($this->userInfo !== null) {
-            // ID Token の claim を優先する。署名で検証できているのは ID Token だけのため。
+            // Claims of the ID Token win. Only the ID Token is verified by a signature.
             $claims += $this->userInfo->fetch($metadata, $tokens->accessToken, $subject);
         }
 

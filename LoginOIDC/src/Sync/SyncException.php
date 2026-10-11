@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Sync;
 
-/** 同期を続けられない。この例外が出たときは、何も変更していない。 */
+/** The sync cannot continue. When this is thrown, nothing has been changed. */
 final class SyncException extends \RuntimeException
 {
 }

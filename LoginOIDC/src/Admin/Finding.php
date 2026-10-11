@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Admin;
 
-/** 設定の検査で見つかったこと。 */
+/** Something the settings check found. */
 final class Finding
 {
     public const ERROR = 'error';
@@ -14,30 +14,30 @@ final class Finding
     /** @param list<string|int> $arguments */
     private function __construct(
         public readonly string $level,
-        /** 関係する設定項目の名前 */
+        /** name of the setting it is about */
         public readonly string $setting,
-        /** 説明のひな形（sprintf の形式）。翻訳のキーになるので、値は埋め込まずに $arguments で渡す */
+        /** explanation as an sprintf template. It is the translation key, so values go in $arguments, never into the text */
         public readonly string $template,
         public readonly array $arguments,
     ) {
     }
 
-    /** このままでは動かない、または意図と違う動きになる。 */
+    /** It will not work, or will not do what was intended. */
     public static function error(string $setting, string $template, string|int ...$arguments): self
     {
         return new self(self::ERROR, $setting, $template, array_values($arguments));
     }
 
-    /** 動くが、確かめた方がよい。 */
+    /** It works, but is worth a second look. */
     public static function warning(string $setting, string $template, string|int ...$arguments): self
     {
         return new self(self::WARNING, $setting, $template, array_values($arguments));
     }
 
     /**
-     * 説明の文を作る。
+     * Builds the explanation.
      *
-     * @param (callable(string): string)|null $translate ひな形を翻訳する。省略すると英語のまま
+     * @param (callable(string): string)|null $translate translates the template. English when omitted
      */
     public function message(?callable $translate = null): string
     {

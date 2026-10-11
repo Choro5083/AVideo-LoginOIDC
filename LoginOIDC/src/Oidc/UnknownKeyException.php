@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Oidc;
 
-/** トークンの kid に合う鍵が JWKS に無い。JWKS を取り直すきっかけにする。 */
+/** The JWKS has no key for the token's kid. Used as the cue to refetch the JWKS. */
 final class UnknownKeyException extends \RuntimeException
 {
 }

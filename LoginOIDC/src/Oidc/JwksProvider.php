@@ -8,7 +8,7 @@ namespace LoginOIDC\Oidc;
 use LoginOIDC\Http\HttpClient;
 use LoginOIDC\Http\HttpException;
 
-/** IdP の公開鍵（JWKS）を取り、キャッシュする。 */
+/** Fetches and caches the provider's public keys (JWKS). */
 final class JwksProvider
 {
     private const CACHE_TTL_SECONDS = 3600;
@@ -21,17 +21,17 @@ final class JwksProvider
     }
 
     /**
-     * 署名の検証に使う鍵の JWKS を返す。
+     * Returns the JWKS of the keys used to verify signatures.
      *
-     * @param  bool $refresh キャッシュを使わずに取り直す（鍵のローテーションに追従するとき）
+     * @param  bool $refresh fetch again instead of using the cache (to follow a key rotation)
      * @return array{keys: list<array<string, mixed>>}
-     * @throws OidcException 取得できない、または内容が正しくないとき
+     * @throws OidcException when it cannot be fetched or is malformed
      */
     public function signingKeys(ProviderMetadata $metadata, bool $refresh = false): array
     {
         $cacheKey = 'jwks:' . $metadata->jwksUri;
-        // 取り直しは間隔を空ける。知らない kid のトークンを送り続けるだけで、IdP へ
-        // リクエストを打たせ続けられないようにする。
+        // Refetching is spaced out. Otherwise sending tokens with unknown kids would be enough to make
+        // this server keep hitting the provider.
         $refreshKey = 'jwks-refreshed:' . $metadata->jwksUri;
         if ($refresh && $this->cache->get($refreshKey) !== null) {
             $refresh = false;
@@ -60,7 +60,7 @@ final class JwksProvider
             throw new OidcException('JWKS has no "keys" member');
         }
 
-        // 暗号化用の鍵（use = enc）は署名の検証に使わない。
+        // Keys for encryption (use = enc) are not used to verify signatures.
         return ['keys' => array_values(array_filter(
             $keys,
             static fn (mixed $key): bool => is_array($key) && ($key['use'] ?? 'sig') === 'sig',

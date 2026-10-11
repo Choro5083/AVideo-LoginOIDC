@@ -5,13 +5,13 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Sync;
 
-/** IdP のユーザを、管理用の API で調べる。 */
+/** Looks users up at the provider through its admin API. */
 interface RemoteDirectory
 {
     /**
-     * @return RemoteUser|null ユーザが存在しなければ null
-     * @throws SyncException 調べられなかったとき（通信の失敗、権限の不足など）。
-     *                       「存在しない」とは区別する。
+     * @return RemoteUser|null null when the user does not exist
+     * @throws SyncException when the lookup failed (network failure, missing permission and so on).
+     *                       This is kept apart from "does not exist".
      */
     public function lookup(string $subject): ?RemoteUser;
 }

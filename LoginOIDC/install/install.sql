@@ -1,12 +1,12 @@
--- LoginOIDC のテーブル。MariaDB と MySQL の両方で動く書き方にする
--- （どちらか専用の構文を使わない）。
+-- Tables of LoginOIDC. Written to run on both MariaDB and MySQL
+-- (no syntax specific to either).
 
--- IdP のユーザと AVideo のユーザの対応。1対1。
--- issuer と subject は大文字と小文字を区別して突き合わせる必要があるため、
--- 照合順序を ascii_bin にする（OIDC の sub は ASCII で 255 文字まで）。
+-- Maps a user at the provider to an AVideo user, one to one.
+-- issuer and subject must be compared case-sensitively, so their collation
+-- is ascii_bin (an OIDC sub is ASCII, up to 255 characters).
 --
--- sessions_revoked_at は、このユーザの全セッションを無効にした時刻（UNIX 秒）。
--- これ以前のログインは終わらせる。
+-- sessions_revoked_at is when every session of the user was revoked (UNIX seconds).
+-- Sign-ins from before that moment are ended.
 CREATE TABLE IF NOT EXISTS `login_oidc_identities` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `users_id` INT NOT NULL,
@@ -27,13 +27,13 @@ CREATE TABLE IF NOT EXISTS `login_oidc_identities` (
     ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
--- IdP のセッション（sid）ごとの記録。Back-Channel Logout で sid を指定されたときに、
--- どのセッションを終わらせるかを決めるのに使う。
+-- One row per provider session (sid). Used to decide which session to end when a
+-- back-channel logout names a sid.
 --
--- PHP のセッション ID は持たない。本体がセッション ID を付け替えることがあり、
--- 対応がずれるため。代わりに、PHP のセッションに sid を持たせ、リクエストのたびに
--- ここと照合する。時刻は UNIX 秒で持つ（PHP 側の時刻と比べるため、DB の
--- タイムゾーンの設定に左右されないようにする）。
+-- The PHP session ID is not stored. AVideo replaces session IDs, so a mapping would
+-- go stale. Instead the PHP session carries the sid, and every request checks it
+-- against this table. Times are UNIX seconds, to compare with PHP's clock without
+-- depending on the database time zone.
 CREATE TABLE IF NOT EXISTS `login_oidc_sessions` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `users_id` INT NOT NULL,

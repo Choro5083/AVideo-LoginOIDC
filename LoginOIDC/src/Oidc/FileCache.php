@@ -6,10 +6,10 @@ declare(strict_types=1);
 namespace LoginOIDC\Oidc;
 
 /**
- * ファイルによるキャッシュ。
+ * A cache in files.
  *
- * 入れるのは公開情報（Discovery の結果と公開鍵）だけ。書けなくても動作は
- * 続けられるので、書き込みの失敗は例外にせず、次の読み出しで取り直させる。
+ * It only ever holds public information (the discovery result and public keys). The plugin
+ * works without it, so a failed write is not an error: the next read just fetches again.
  */
 final class FileCache implements Cache
 {
@@ -43,7 +43,7 @@ final class FileCache implements Cache
         if ($json === false || @file_put_contents($temp, $json, LOCK_EX) === false) {
             return;
         }
-        // 途中まで書いたファイルを読ませないため、書き終えてから置き換える。
+        // Replace the file only once it is fully written, so a half-written one is never read.
         @rename($temp, $file);
     }
 

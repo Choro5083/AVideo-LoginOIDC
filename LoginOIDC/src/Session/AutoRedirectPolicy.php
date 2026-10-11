@@ -8,15 +8,15 @@ namespace LoginOIDC\Session;
 use LoginOIDC\Native\IpMatcher;
 use LoginOIDC\Settings;
 
-/** 未ログインの利用者を、IdP のログインへ自動で送るかどうか。 */
+/** Whether to send an anonymous visitor to the provider's sign-in automatically. */
 final class AutoRedirectPolicy
 {
     /**
-     * 送ってはいけない場所。
+     * Places a visitor must never be redirected from.
      *
-     * - このプラグイン自身のエンドポイント（送ると、ログインの途中やエラー画面で回り続ける）
-     * - 本体のログイン画面とログイン・ログアウトの処理（ネイティブログインに使う。
-     *   IdP が止まったときの入口でもある）
+     * - This plugin's own endpoints (redirecting there loops during a sign-in or on an error page)
+     * - AVideo's sign-in page and its sign-in and logout handlers (used for native sign-in,
+     *   which is also the way in when the provider is down)
      */
     private const EXCLUDED_SCRIPTS = [
         '/view/user.php',
@@ -33,8 +33,8 @@ final class AutoRedirectPolicy
         if (!$settings->autoRedirect || !$settings->isConfigured()) {
             return false;
         }
-        // 対象は、ブラウザが画面として開くリクエストだけ。API、JSON、動画ファイル、
-        // JavaScript からの通信をリダイレクトすると、呼び出し側が壊れる。
+        // Only requests a browser makes to show a page. Redirecting APIs, JSON, video files
+        // or requests from JavaScript breaks the caller.
         if (strtoupper($request->method) !== 'GET' || $request->ajax) {
             return false;
         }

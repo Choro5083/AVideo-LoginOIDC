@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC;
 
-/** トークンエンドポイントでのクライアント認証の方式。 */
+/** How the client authenticates at the token endpoint. */
 enum ClientAuthMethod: string
 {
     case SecretBasic = 'client_secret_basic';

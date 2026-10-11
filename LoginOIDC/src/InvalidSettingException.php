@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC;
 
-/** 設定値が解釈できないときに投げる。メッセージには項目名を含める。 */
+/** Thrown when a setting cannot be interpreted. The message includes the setting name. */
 final class InvalidSettingException extends \InvalidArgumentException
 {
 }

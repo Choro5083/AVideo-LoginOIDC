@@ -19,10 +19,10 @@ final class HttpResponse
     }
 
     /**
-     * 本文を JSON オブジェクトとして読む。
+     * Reads the body as a JSON object.
      *
      * @return array<string, mixed>
-     * @throws HttpException JSON オブジェクトでないとき
+     * @throws HttpException when it is not a JSON object
      */
     public function json(): array
     {

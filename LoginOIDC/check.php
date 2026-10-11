@@ -1,7 +1,7 @@
 <?php
 // SPDX-License-Identifier: MIT
 
-// 設定の検査結果を出すページ。管理者だけが開ける。プラグインの一覧の「Check settings」から開く。
+// Shows the result of the settings check. Admins only. Opened from "Check settings" in the plugin list.
 
 declare(strict_types=1);
 
@@ -22,17 +22,17 @@ if (empty(AVideoPlugin::loadPlugin('LoginOIDC'))) {
 $findings = SettingsReport::quick(LoginOIDC::settings(...));
 $checkedProvider = false;
 try {
-    // IdP との通信は、設定が読めたときだけ試す。
+    // Contact the provider only when the settings could be read.
     $findings = [...$findings, ...SettingsReport::provider(LoginOIDC::settings(), RequestGuard::cache())];
     $checkedProvider = true;
 } catch (InvalidSettingException) {
-    // 読めない理由は quick() がすでに入れている。
+    // quick() has already reported why they could not be read.
 }
 
 $errors = count(array_filter($findings, static fn (Finding $f): bool => $f->level === Finding::ERROR));
 $warnings = count($findings) - $errors;
 $escape = static fn (string $text): string => htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
-// 翻訳して、HTML に出せる形にする。
+// Translates and escapes for HTML.
 $text = static fn (string $english, string|int ...$arguments): string => $escape(vsprintf(LoginOIDC::t($english), $arguments));
 ?>
 <!DOCTYPE html>

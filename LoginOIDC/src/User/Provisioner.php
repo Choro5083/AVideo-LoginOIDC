@@ -10,11 +10,11 @@ use LoginOIDC\Oidc\VerifiedLogin;
 use LoginOIDC\Settings;
 
 /**
- * 検証済みの認証結果から、AVideo のユーザを決める。
+ * Decides which AVideo user a verified sign-in belongs to.
  *
- * 突き合わせは (issuer, sub) だけで行う。username やメールアドレスが同じでも、
- * 既存のユーザには紐付けない。IdP 側でそれらを他人と同じにできれば、
- * 他人のアカウントに入れてしまうため。
+ * Matching uses (issuer, sub) only. A user with the same username or e-mail address
+ * is never linked. If someone could make those equal to another person's at the
+ * provider, they would get into that person's account.
  */
 final class Provisioner
 {
@@ -25,7 +25,7 @@ final class Provisioner
     ) {
     }
 
-    /** @throws LoginDeniedException ログインを認めないとき */
+    /** @throws LoginDeniedException when the sign-in is not allowed */
     public function provision(VerifiedLogin $login): ProvisionResult
     {
         if (!RoleMapper::meetsRequirement($this->settings, $login->claims)) {
@@ -49,7 +49,7 @@ final class Provisioner
             throw new LoginDeniedException("user {$user->username} (id {$user->id}) is disabled");
         }
 
-        // 作った直後は、作成時に渡した値がそのまま入っているので更新しない。
+        // A user created just now already holds the values passed at creation, so skip the update.
         if (!$created) {
             $this->updateProfile($user->id, $login->claims);
         }
@@ -61,12 +61,12 @@ final class Provisioner
         return new ProvisionResult($user->id, $user->username, $created);
     }
 
-    /** @return array{int, bool} [ユーザの ID, 新しく作ったか] */
+    /** @return array{int, bool} [user ID, whether it was created] */
     private function createAndLink(VerifiedLogin $login): array
     {
         $claims = $login->claims;
         try {
-            // ユーザの作成と対応の保存は、片方だけ残らないようにまとめて行う。
+            // Create the user and store the link together, so that never only one of them remains.
             $userId = $this->identities->transactional(function () use ($login, $claims): int {
                 $userId = $this->users->create(new NewUser(
                     username: UsernamePolicy::unique(
@@ -84,8 +84,8 @@ final class Provisioner
 
             return [$userId, true];
         } catch (DuplicateIdentityException $e) {
-            // 同じ人の初回ログインが同時に2つ来ると、後の方はここに来る。
-            // 先に作られた方のユーザを使う。
+            // When two first sign-ins of the same person arrive at once, the later one ends up here.
+            // Use the user the earlier one created.
             $existing = $this->identities->findUserId($login->issuer, $login->subject)
                 ?? throw new LoginDeniedException("cannot link sub {$login->subject}: {$e->getMessage()}", 0, $e);
 
@@ -101,7 +101,7 @@ final class Provisioner
 
         $this->users->updateProfile(
             $userId,
-            // claim が無いときは、今の値を空で上書きしない。
+            // When a claim is missing, do not blank the current value.
             $this->settings->updateName && $name !== '' ? $name : null,
             $this->settings->updateEmail && $email !== '' ? $email : null,
             $this->settings->updateEmailVerified && is_bool($claims['email_verified'] ?? null)

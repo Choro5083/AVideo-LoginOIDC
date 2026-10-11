@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Oidc;
 
-/** client_secret_post。ID とシークレットをリクエストの本文で送る。 */
+/** client_secret_post. Sends the ID and the secret in the request body. */
 final class SecretPostAuthenticator implements ClientAuthenticator
 {
     public function __construct(

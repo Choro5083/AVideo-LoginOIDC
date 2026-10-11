@@ -5,12 +5,12 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Sync;
 
-/** IdP 側のユーザの今の状態。 */
+/** Current state of a user at the provider. */
 final class RemoteUser
 {
     /**
-     * @param list<string> $roleValues  権限の元になる値（設定で選んだ種類の割り当て）
-     * @param list<string> $groupValues 所属する group の名前とパス
+     * @param list<string> $roleValues  values permissions derive from (assignments of the configured kind)
+     * @param list<string> $groupValues names and paths of the user's groups
      */
     public function __construct(
         public readonly bool $enabled,

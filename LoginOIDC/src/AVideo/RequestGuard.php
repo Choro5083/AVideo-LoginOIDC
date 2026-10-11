@@ -19,16 +19,16 @@ use LoginOIDC\Session\SessionPolicy;
 use LoginOIDC\Settings;
 
 /**
- * 本体のフック（リクエストの開始時、ログインの成立時）から呼ばれる処理。
+ * Called from AVideo's hooks (start of a request, successful sign-in).
  *
- * 判定そのものは Session\SessionPolicy と Native\NativeLoginPolicy にある。
- * ここは、本体のセッションやグローバル変数との受け渡しだけを行う。
+ * The decisions are in Session\SessionPolicy and Native\NativeLoginPolicy.
+ * This class only moves data between them and AVideo's session and globals.
  */
 final class RequestGuard
 {
     private const SESSION_KEY = 'loginOIDC';
 
-    /** callback.php が、IdP 経由のログインであることを onUserSignIn に伝えるための印。 */
+    /** Set by callback.php to tell onUserSignIn that the sign-in came through the provider. */
     public static bool $signingInViaProvider = false;
 
     public static function cache(): FileCache
@@ -55,7 +55,7 @@ final class RequestGuard
         _session_write_close();
     }
 
-    /** リクエストの開始時に呼ばれる（本体の getStart フック）。 */
+    /** Called at the start of a request (AVideo's getStart hook). */
     public static function onRequestStart(): void
     {
         if (isCommandLineInterface()) {
@@ -70,7 +70,7 @@ final class RequestGuard
         }
 
         $marker = self::marker();
-        // 印は IdP 経由でログインしたユーザのもの。別のユーザのセッションになっていたら、印の方を捨てる。
+        // The marker belongs to the user who signed in through the provider. If the session is someone else's now, drop the marker.
         if ($marker !== null && (int) ($_SESSION['user']['id'] ?? 0) !== $marker->userId) {
             self::clearMarker();
             $marker = null;
@@ -104,13 +104,13 @@ final class RequestGuard
         }
     }
 
-    /** 未ログインの画面表示を、設定に従って IdP のログインへ送る。 */
+    /** Sends an anonymous page view to the provider's sign-in, when configured. */
     private static function redirectToProviderIfAnonymous(Settings $settings): void
     {
         global $global;
 
-        // 先に安い判定を済ませる。User::isLogged() は Cookie からの復元を試みるため、
-        // 対象外のリクエスト（API や動画）では呼ばない。
+        // Do the cheap checks first. User::isLogged() tries to restore a sign-in from the cookie,
+        // so it is not called for requests that are out of scope anyway (APIs, video files).
         $request = new PageRequest(
             method: (string) ($_SERVER['REQUEST_METHOD'] ?? ''),
             scriptName: (string) ($_SERVER['SCRIPT_NAME'] ?? ''),
@@ -128,7 +128,7 @@ final class RequestGuard
         exit;
     }
 
-    /** ログインが成立した直後に呼ばれる（本体の onUserSignIn フック）。 */
+    /** Called right after a sign-in succeeded (AVideo's onUserSignIn hook). */
     public static function onUserSignIn(int $userId): void
     {
         if (self::$signingInViaProvider) {
@@ -139,7 +139,7 @@ final class RequestGuard
             $settings = \LoginOIDC::settings();
             $linked = (new SessionRegistry())->isLinked($userId);
         } catch (InvalidSettingException | DbException $e) {
-            // 判定できないときにログインを通すと、制御をすり抜けられる。止める側に倒す。
+            // Letting the sign-in through when it cannot be evaluated would be a way around the control. Deny.
             _error_log('LoginOIDC: cannot evaluate the native sign-in, denying it: ' . $e->getMessage(), \AVideoLog::$ERROR);
             \User::logoff();
 
@@ -151,14 +151,14 @@ final class RequestGuard
             username: $username,
             linked: $linked,
             viaCookie: self::isRestoringFromCookie(),
-            // 転送ヘッダ（X-Forwarded-For）は見ない。送る側が自由に書けるため、Encoder の例外に使えない。
+            // Forwarding headers (X-Forwarded-For) are ignored. The sender controls them, so they cannot grant the Encoder exception.
             remoteAddress: (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
         ));
         if ($reason === null) {
             if ($linked) {
-                // IdP に紐付いたユーザのセッションには、ネイティブログインで始まったものにも印を付ける。
-                // 付けないと、無効化やログアウトの対象から漏れる。本体のログイン処理の途中で、
-                // セッションは開いているので、閉じずに書くだけにする。
+                // Sessions of linked users get a marker even when they start with a native sign-in.
+                // Without it they would escape revocation and logout. AVideo is in the middle of its
+                // sign-in and has the session open, so write to it without closing it.
                 $_SESSION[self::SESSION_KEY]['marker'] = (new SessionMarker($userId, '', time(), ''))->toArray();
             }
 
@@ -166,17 +166,17 @@ final class RequestGuard
         }
 
         _error_log("LoginOIDC: native sign-in of user {$username} (id {$userId}) denied: {$reason}", \AVideoLog::$SECURITY);
-        // 本体にはログインの前に割り込むフックが無い。成立した直後に取り消す。
+        // AVideo has no hook before the sign-in. Cancel it right after it succeeded.
         \User::logoff();
     }
 
     /**
-     * いまのログインが、Cookie からの復元によるものか。
+     * Whether the current sign-in is a restoration from the cookie.
      *
-     * 本体は復元を User::recreateLoginFromCookie() で行う。本体が持つ印
-     * （$justTryToRecreateLoginFromCookie）は「復元を試みた」ことを示すだけで、
-     * Cookie が無くても立つ。そのため、ログイン処理を呼んだのが復元の処理かどうかを
-     * 呼び出し元から確かめる。
+     * AVideo restores sign-ins in User::recreateLoginFromCookie(). Its own flag
+     * ($justTryToRecreateLoginFromCookie) only says that a restoration was attempted and is
+     * set even without a cookie. So the call stack is checked to see whether the sign-in
+     * was started by the restoration.
      */
     private static function isRestoringFromCookie(): bool
     {
@@ -195,17 +195,17 @@ final class RequestGuard
     }
 
     /**
-     * AVideo からログアウトし、IdP のログアウトへリダイレクトする（RP-Initiated Logout）。
+     * Signs out of AVideo and redirects to the provider's logout (RP-Initiated Logout).
      *
-     * IdP へ飛ばせないとき（設定で無効、IdP が対応していない、Discovery が失敗）は何もせずに戻り、
-     * 本体のログアウトをそのまま続けさせる。
+     * When the provider cannot be used (disabled in the settings, no logout endpoint, discovery
+     * failed), it returns without doing anything and AVideo's own logout carries on.
      */
     private static function logoutAtProvider(Settings $settings, SessionMarker $marker): void
     {
         global $global;
 
-        // ID Token を持たない印は、ネイティブログインで始まったセッションのもの。IdP のセッションとは
-        // 結び付いていないので、IdP へは送らない。
+        // A marker without an ID Token belongs to a session that started with a native sign-in. It is not
+        // tied to a provider session, so the provider is not involved.
         if (!$settings->rpInitiatedLogout || $marker->idToken === '') {
             self::clearMarker();
 

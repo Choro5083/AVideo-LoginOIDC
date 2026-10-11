@@ -10,16 +10,16 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 /**
- * IdP が署名した JWT（ID Token、Logout Token）の署名と有効期限を検証する。
+ * Verifies the signature and the expiry of a JWT signed by the provider (ID Token, Logout Token).
  *
- * 署名の検証と JWKS の解釈は firebase/php-jwt に任せ、自作しない。
- * claim の内容（iss、aud など）は、トークンの種類ごとに呼ぶ側が検証する。
+ * Signature verification and JWKS parsing are left to firebase/php-jwt. They are not reimplemented here.
+ * The claims themselves (iss, aud and so on) are checked by the caller, per kind of token.
  */
 final class JwtVerifier
 {
     /**
-     * 受け入れる署名アルゴリズム。公開鍵で検証するものに限る。
-     * 共通鍵（HS*）を受け入れると、公開鍵を共通鍵として使わせる攻撃の余地が生まれる。
+     * Signing algorithms that are accepted: only those verified with a public key.
+     * Accepting shared-key algorithms (HS*) would open the door to using the public key as the shared key.
      */
     private const ALLOWED_ALGS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'EdDSA'];
 
@@ -30,9 +30,9 @@ final class JwtVerifier
     }
 
     /**
-     * @param  string $what エラーメッセージに出すトークンの種類
-     * @return array<string, mixed> 署名を検証できた claim
-     * @throws OidcException 検証に失敗したとき
+     * @param  string $what kind of token, for error messages
+     * @return array<string, mixed> claims whose signature was verified
+     * @throws OidcException when verification fails
      */
     public function verify(#[\SensitiveParameter] string $jwt, ProviderMetadata $metadata, int $now, string $what): array
     {
@@ -41,7 +41,7 @@ final class JwtVerifier
         try {
             return $this->decode($jwt, $alg, $kid, $this->jwks->signingKeys($metadata), $now, $what);
         } catch (UnknownKeyException) {
-            // IdP が鍵を入れ替えた直後は、キャッシュした JWKS に新しい鍵が無い。1度だけ取り直す。
+            // Right after the provider rotates its keys, the cached JWKS lacks the new one. Refetch once.
             try {
                 return $this->decode($jwt, $alg, $kid, $this->jwks->signingKeys($metadata, refresh: true), $now, $what);
             } catch (UnknownKeyException) {
@@ -51,9 +51,9 @@ final class JwtVerifier
     }
 
     /**
-     * ヘッダを読み、受け入れないアルゴリズムを署名の検証より前に弾く。
+     * Reads the header and rejects unaccepted algorithms before any signature is verified.
      *
-     * @return array{string, string} [alg, kid]。kid が無ければ空文字
+     * @return array{string, string} [alg, kid]. kid is an empty string when absent
      */
     private static function readHeader(string $jwt, string $what): array
     {
@@ -74,23 +74,23 @@ final class JwtVerifier
     }
 
     /**
-     * 署名と有効期限を検証して claim を返す。
+     * Verifies the signature and the expiry, and returns the claims.
      *
      * @param  array{keys: list<array<string, mixed>>} $jwks
      * @return array<string, mixed>
-     * @throws UnknownKeyException kid に合う鍵が無いとき
-     * @throws OidcException       それ以外の検証の失敗
+     * @throws UnknownKeyException when no key matches the kid
+     * @throws OidcException       on any other verification failure
      */
     private function decode(string $jwt, string $alg, string $kid, array $jwks, int $now, string $what): array
     {
-        // leeway と timestamp はライブラリの静的な設定で、AVideo 本体も同じクラスを使う。
-        // 検証の間だけ変え、必ず元に戻す。
+        // leeway and timestamp are static settings of the library, and AVideo uses the same class.
+        // Change them only for this verification and always restore them.
         $previousLeeway = JWT::$leeway;
         $previousTimestamp = JWT::$timestamp;
         JWT::$leeway = $this->clockSkewSeconds;
         JWT::$timestamp = $now;
         try {
-            // JWKS の鍵に alg が無い IdP があるため、トークンの alg（許可済みのもの）を既定にする。
+            // Some providers publish JWKS keys without alg, so the token's alg (already allowlisted) is the default.
             $keys = $jwks['keys'] === [] ? [] : JWK::parseKeySet($jwks, $alg);
             $key = $kid !== '' ? ($keys[$kid] ?? null) : (count($keys) === 1 ? reset($keys) : null);
             if (!$key instanceof Key) {

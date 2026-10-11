@@ -6,17 +6,17 @@ declare(strict_types=1);
 namespace LoginOIDC\Oidc;
 
 /**
- * トークンエンドポイントで、クライアント自身の身元を示す方法。
+ * How the client proves its own identity at the token endpoint.
  *
- * 方式を足すとき（private_key_jwt など）は、この実装を1つ増やせば済むようにしてある。
+ * Adding a method (private_key_jwt, for example) only takes one more implementation of this.
  */
 interface ClientAuthenticator
 {
-    /** IdP が Discovery で示す方式名（token_endpoint_auth_methods_supported の値）。 */
+    /** Name of the method as the provider lists it in discovery (token_endpoint_auth_methods_supported). */
     public function method(): string;
 
     /**
-     * リクエストに認証の情報を足して返す。
+     * Returns the request with the authentication added.
      *
      * @param  array<string, string> $headers
      * @param  array<string, string> $form

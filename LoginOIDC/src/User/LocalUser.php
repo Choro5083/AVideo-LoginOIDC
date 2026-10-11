@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace LoginOIDC\User;
 
-/** AVideo のユーザのうち、このプラグインが見る部分。 */
+/** The part of an AVideo user this plugin looks at. */
 final class LocalUser
 {
     public function __construct(
