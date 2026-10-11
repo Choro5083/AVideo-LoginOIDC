@@ -1,8 +1,8 @@
 #!/bin/bash
-# 結合テストをすべて流す。環境変数は lib.sh を参照。
+# Runs every end-to-end scenario. See lib.sh for the environment variables.
 #
-# 前提: 開発環境が起動していて、Keycloak が作り直した直後の状態であること
-# （最後の 07-sync.sh が Keycloak のユーザを変更・削除するため）。
+# Requires the development environment to be up, with Keycloak freshly recreated
+# (the last scenario, 07-sync.sh, changes and deletes Keycloak users).
 cd "$(dirname "$0")" || exit 1
 failed=0
 for scenario in 0[1-7]-*.sh; do

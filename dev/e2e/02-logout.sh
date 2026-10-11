@@ -1,5 +1,5 @@
 #!/bin/bash
-# ログアウト: RP-Initiated Logout と Back-Channel Logout
+# Logout: RP-Initiated Logout and Back-Channel Logout
 source "$(dirname "$0")/lib.sh"
 reset_settings
 
@@ -14,7 +14,7 @@ location=$(curl -sk -c "$WORK/a" -b "$WORK/a" -o /dev/null -w '%{redirect_url}' 
 check "the provider asks for the password again" 200 "$(curl -s -c "$WORK/a" -b "$WORK/a" -o /dev/null -w '%{http_code}' "$location")"
 
 echo "back-channel logout"
-# 他のシナリオで作った alice のセッションが Keycloak に残っていると、どれを終わらせたか分からなくなる。先に片付ける。
+# Sessions of alice left in Keycloak by other scenarios would make it unclear which one is ended. Clear them first.
 kc -X POST "$KC_ADMIN/users/$ALICE/logout" -o /dev/null; sleep 2
 sso_login alice "$WORK/b1" >/dev/null; sso_login alice "$WORK/b2" >/dev/null; sso_login bob "$WORK/b3" >/dev/null
 session=$(kc "$KC_ADMIN/users/$ALICE/sessions" | python3 -c "import json,sys;print(json.load(sys.stdin)[0]['id'])")

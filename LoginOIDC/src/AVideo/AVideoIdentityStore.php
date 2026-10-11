@@ -73,6 +73,16 @@ final class AVideoIdentityStore implements IdentityStore
         );
     }
 
+    /**
+     * Removes the link of a user. Not part of IdentityStore: only the admin CLI uses it.
+     *
+     * @return bool whether a link existed
+     */
+    public function unlink(int $userId): bool
+    {
+        return Db::execute('DELETE FROM login_oidc_identities WHERE users_id = ?', 'i', [$userId]) > 0;
+    }
+
     public function transactional(callable $work): mixed
     {
         $connection = Db::connection();

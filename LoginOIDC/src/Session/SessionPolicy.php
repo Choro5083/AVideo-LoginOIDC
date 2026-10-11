@@ -15,6 +15,9 @@ final class SessionPolicy
         if (!$state->userActive) {
             return 'the user is disabled or no longer exists';
         }
+        if (!$state->linked) {
+            return 'the user is no longer linked to the provider';
+        }
         if ($state->sessionRevoked) {
             return 'the provider session was logged out';
         }

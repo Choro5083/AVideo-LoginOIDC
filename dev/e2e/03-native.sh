@@ -1,12 +1,12 @@
 #!/bin/bash
-# ネイティブログインの制御、Cookie からの復元、Encoder の例外
+# Native sign-in control, restoration from the cookie, the Encoder exception
 source "$(dirname "$0")/lib.sh"
 reset_settings
 sso_login alice "$WORK/setup-alice" >/dev/null; sso_login bob "$WORK/setup-bob" >/dev/null; sso_login carol "$WORK/setup-carol" >/dev/null
 ADMIN_PASSWORD=$(env_value SYSTEM_ADMIN_PASSWORD)
 native() { curl -sk -c "$3" -b "$3" --data-urlencode "user=$1" --data-urlencode "pass=$2" "${@:4}" "$AVIDEO_URL/objects/login.json.php" \
     | python3 -c "import json,sys;print(json.load(sys.stdin).get('isLogged'))" 2>/dev/null; }
-# Encoder（AVideo と同じコンテナ）から、トークンでログインする
+# Signs in with a token from the Encoder (the same container as AVideo)
 from_encoder() { dexec "$AVIDEO_CONTAINER" curl -sk "$AVIDEO_URL/login?user=$1&pass=$2&encodedPass=1" \
     | python3 -c "import json,sys;print(json.load(sys.stdin).get('isLogged'))" 2>/dev/null; }
 from_outside() { curl -sk -A AVideoEncoder "$AVIDEO_URL/login?user=$1&pass=$2&encodedPass=1" \

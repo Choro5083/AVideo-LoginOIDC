@@ -27,6 +27,11 @@ final class SessionPolicyTest extends TestCase
         self::assertNotNull(SessionPolicy::reasonToEnd(self::marker(), new SessionState(false, null, false)));
     }
 
+    public function testEndsSessionOfUserWhoWasUnlinked(): void
+    {
+        self::assertNotNull(SessionPolicy::reasonToEnd(self::marker(), new SessionState(true, null, false, linked: false)));
+    }
+
     public function testEndsSessionWhoseProviderSessionWasLoggedOut(): void
     {
         self::assertNotNull(SessionPolicy::reasonToEnd(self::marker(), new SessionState(true, null, true)));

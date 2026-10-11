@@ -1,9 +1,9 @@
 #!/bin/bash
-# アップロード: SSO のユーザが Encoder を通して動画を投稿できるか。
-# 実際に動画を変換するので、他のシナリオより時間がかかる。
+# Upload: can a user signed in through the provider post a video through the Encoder?
+# It really encodes a video, so it takes longer than the other scenarios.
 #
-# 設定は、ネイティブログインを許可リストに絞り、Encoder のアドレスだけを例外にする
-# （Encoder は投稿者本人としてネイティブログインするので、例外が無いと投稿できない）。
+# Native sign-in is restricted to the allowlist, with only the Encoder's address exempt
+# (the Encoder signs in natively as the uploader, so without the exemption nothing can be posted).
 source "$(dirname "$0")/lib.sh"
 reset_settings
 TITLE="e2e-upload-$$"
@@ -34,8 +34,8 @@ contains "the Encoder queues the file" '"error":false' "$(echo "$upload" | tr -d
 echo "waiting for the Encoder to convert and deliver (up to 4 minutes)"
 for _ in $(seq 1 48); do
     [ "$(video_field status)" = a ] && break
-    # Encoder は、状態の問い合わせを受けたときにキューの処理を始める。ふだんは、開いている
-    # Encoder の画面が定期的に問い合わせている。ここでは代わりに問い合わせる。
+    # The Encoder starts working on its queue when its status is requested. Normally an open
+    # Encoder page does that periodically. Here the test does it instead.
     curl -sk -b "$WORK/enc" -o /dev/null "$AVIDEO_URL/Encoder/status"
     sleep 5
 done
@@ -54,8 +54,8 @@ check "the Encoder does not give carol the upload permission" False "$(echo "$lo
 
 db "delete from videos where title='$TITLE'" 2>/dev/null
 dexec "$AVIDEO_CONTAINER" rm -f /tmp/e2e-source.mp4
-# 動画のディレクトリを消す。名前が空のまま rm -rf すると videos/ ごと消える（AVideo の設定ファイルも
-# そこにある）ので、名前が取れていて、動画のディレクトリの形をしているときだけ消す。
+# Remove the video's directory. rm -rf with an empty name would delete all of videos/ (where AVideo's
+# configuration file lives too), so it runs only when the name was found and looks like a video directory.
 case "$filename" in
     ''|*[!A-Za-z0-9_.-]*|.|..) ;;
     *) dexec "$AVIDEO_CONTAINER" rm -rf "/var/www/html/AVideo/videos/$filename" ;;

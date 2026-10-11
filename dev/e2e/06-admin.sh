@@ -1,11 +1,11 @@
 #!/bin/bash
-# 管理画面: 設定の検査と、シークレットの暗号化
+# Admin pages: the settings check and the encrypted secret
 source "$(dirname "$0")/lib.sh"
 reset_settings
 ADMIN_PASSWORD=$(env_value SYSTEM_ADMIN_PASSWORD)
 curl -sk -c "$WORK/admin" -b "$WORK/admin" -o /dev/null --data-urlencode user=admin --data-urlencode "pass=$ADMIN_PASSWORD" "$AVIDEO_URL/objects/login.json.php"
 check_page() { curl -sk -b "$WORK/admin" "$AVIDEO_URL/plugin/LoginOIDC/check.php"; }
-# 本体は、同じサイトからのリクエストかを Referer で確かめる
+# AVideo checks the Referer to see that the request comes from the same site
 plugin_list() { curl -sk -b "$WORK/admin" -H "Referer: $AVIDEO_URL/plugins" "$AVIDEO_URL/objects/pluginsAvailable.json.php" \
     | python3 -c "import json,sys
 rows=json.load(sys.stdin).get('rows',[])

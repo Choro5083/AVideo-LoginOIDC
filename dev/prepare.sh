@@ -1,11 +1,11 @@
 #!/bin/bash
-# 開発環境を（再）インストールした後に流す。
-#   - Encoder から AVideo への通信で、TLS の検証を切る（AVideo の証明書が自己署名のため）
-#   - LoginOIDC を有効にし、テスト用の realm に向けた設定を入れる
+# Run after (re)installing the development environment.
+#   - turns off TLS verification from the Encoder to AVideo (AVideo's certificate is self-signed)
+#   - enables LoginOIDC and points it at the test realm
 #
 #   KEYCLOAK_URL=http://<HOST>:8081 [SUDO=sudo] bash dev/prepare.sh
 set -eu
-: "${KEYCLOAK_URL:?KEYCLOAK_URL を設定する}"
+: "${KEYCLOAK_URL:?set KEYCLOAK_URL}"
 AVIDEO_CONTAINER=${AVIDEO_CONTAINER:-avideo-avideo-1}
 SUDO=${SUDO:-}
 

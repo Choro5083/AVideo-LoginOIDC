@@ -1,5 +1,5 @@
 #!/bin/bash
-# ログイン: ユーザの作成、権限の反映、コールバックの再送の拒否、戻り先
+# Sign-in: user creation, permissions, refusing a replayed callback, the return address
 source "$(dirname "$0")/lib.sh"
 reset_settings
 
@@ -44,5 +44,23 @@ check "dave (no group) is denied" no "$(logged_in "$WORK/dave-denied")"
 contains "the page says the account is not allowed" "not allowed to sign in" "$(cat "$WORK/callback.html")"
 sso_login carol "$WORK/carol-allowed" >/dev/null
 check "carol (viewer) is allowed" yes "$(logged_in "$WORK/carol-allowed")"
+reset_settings
+
+echo "manual linking (the plugin never links by itself)"
+link() { dexec -u www-data "$AVIDEO_CONTAINER" php /var/www/html/AVideo/plugin/LoginOIDC/cli/link.php "$@" 2>&1 | grep -v 'AVideoLog::'; }
+dave_id=$(user_field dave id)
+sso_login dave "$WORK/dave-linked" >/dev/null
+contains "unlinking works" "unlinked dave" "$(link --unlink dave)"
+check "the unlinked user's session ends" no "$(logged_in "$WORK/dave-linked")"
+setting createUsers false
+sso_login dave "$WORK/dave-unlinked" >/dev/null
+check "with user creation off, an unlinked user cannot sign in" no "$(logged_in "$WORK/dave-unlinked")"
+contains "linking by hand works" "linked dave to $DAVE" "$(link dave "$DAVE")"
+contains "a second link for the same user is refused" "already linked" "$(link dave some-other-sub)"
+contains "the list shows the link" "$DAVE" "$(link --list)"
+sso_login dave "$WORK/dave-relinked" >/dev/null
+check "the linked user signs in" yes "$(logged_in "$WORK/dave-relinked")"
+check "as the same AVideo user as before" "$dave_id" "$(user_field dave id)"
+check "the CLI is not reachable over HTTP" 404 "$(curl -sk -o /dev/null -w '%{http_code}' "$AVIDEO_URL/plugin/LoginOIDC/cli/link.php")"
 reset_settings
 finish

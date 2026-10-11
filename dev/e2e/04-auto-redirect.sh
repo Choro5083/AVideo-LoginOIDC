@@ -1,5 +1,5 @@
 #!/bin/bash
-# 未ログイン時の自動リダイレクト
+# Automatic redirect for anonymous visitors
 source "$(dirname "$0")/lib.sh"
 reset_settings
 HTML='Accept: text/html,application/xhtml+xml'

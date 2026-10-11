@@ -15,6 +15,8 @@ final class SessionState
         public readonly ?int $allRevokedAt,
         /** whether this provider session (sid) was revoked */
         public readonly bool $sessionRevoked,
+        /** whether the user is still linked to the provider */
+        public readonly bool $linked = true,
     ) {
     }
 }

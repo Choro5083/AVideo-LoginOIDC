@@ -1,6 +1,6 @@
 #!/bin/bash
-# Keycloak の同期。
-# Keycloak 側のユーザを変更・削除する。終わったら、Keycloak のコンテナを作り直して元に戻すこと。
+# Keycloak sync.
+# It changes and deletes users at Keycloak. Recreate the Keycloak container afterwards to restore them.
 source "$(dirname "$0")/lib.sh"
 reset_settings
 for user in alice bob carol dave; do sso_login $user "$WORK/$user" >/dev/null; done
@@ -41,7 +41,7 @@ check "alice's session continues" yes "$(logged_in "$WORK/alice")"
 check "bob's session continues" yes "$(logged_in "$WORK/bob")"
 
 echo "re-enabling"
-db "update users set status='i' where user='bob'"   # 管理者が手で無効化した扱い
+db "update users set status='i' where user='bob'"   # as if an admin had disabled the user by hand
 kc -X PUT -d '{"enabled":true}' "$KC_ADMIN/users/$CAROL" -o /dev/null
 out=$(run_sync)
 contains "carol is re-enabled" "re-enabled: carol" "$out"

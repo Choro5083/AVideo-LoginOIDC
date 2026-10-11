@@ -1,27 +1,27 @@
-# 開発用の追加定義。AVideo 本体の docker-compose.yml に重ねて使う（dev/README.md）。
+# Additions for development, layered over AVideo's own docker-compose.yml (see dev/README.md).
 #
-#   docker compose -f <AVideo>/docker-compose.yml -f <このファイル> up -d ...
+#   docker compose -f <AVideo>/docker-compose.yml -f <this file> up -d ...
 #
-# 相対パスは1つ目の compose ファイルの場所から解決されるため、
-# このリポジトリのパスは LOGINOIDC_REPO で受け取る。
+# Relative paths resolve from the first compose file, so the path of
+# this repository comes in LOGINOIDC_REPO.
 services:
   avideo:
     volumes:
-      - "${LOGINOIDC_REPO:?LOGINOIDC_REPO を設定する}/LoginOIDC:/var/www/html/AVideo/plugin/LoginOIDC"
-      # テストを AVideo 本体の PHP と phpunit で流すために、リポジトリ全体も見せる。
+      - "${LOGINOIDC_REPO:?set LOGINOIDC_REPO}/LoginOIDC:/var/www/html/AVideo/plugin/LoginOIDC"
+      # The whole repository is visible too, to run the tests with AVideo's own PHP.
       - "${LOGINOIDC_REPO}:/opt/loginoidc:ro"
-    # Keycloak は avideo とネットワークを共有するので、公開するポートはこちらに書く。
+    # Keycloak shares the network of avideo, so its published port is declared here.
     ports:
       - "${KEYCLOAK_PORT:-8081}:${KEYCLOAK_PORT:-8081}"
 
-  # DB は MariaDB の LTS に固定する。本家の定義は Dockerfile.mariadb で
-  # mariadb:latest（短期サポートの版）を使うため、作り直すたびに版が変わりうる。
-  # build を外してイメージを直接指定し、本家の設定ファイルはマウントで引き継ぐ。
+  # The database is pinned to a MariaDB LTS. Upstream builds Dockerfile.mariadb from
+  # mariadb:latest (a short-term release), so the version could change with every rebuild.
+  # The build is dropped, the image is named directly, and upstream's configuration file is mounted.
   #
-  # データは AVideo のツリーの外（名前付きボリューム）に置く。本家の定義は
-  # ./.compose/db に置くが、avideo の entrypoint が起動時に AVideo のツリー
-  # 全体を www-data に chown するため、DB のデータの持ち主まで変わり、
-  # MariaDB が自分のデータを読めなくなる（エラー 1018）。
+  # The data lives outside the AVideo tree, in a named volume. Upstream keeps it in
+  # ./.compose/db, but the entrypoint of avideo chowns the whole AVideo tree to
+  # www-data on start. That changes the owner of the database files as well, and
+  # MariaDB can no longer read its own data (error 1018).
   database:
     image: "mariadb:${MARIADB_VERSION:-12.3}"
     build: !reset null
@@ -36,16 +36,16 @@ services:
       - avideo_db_encoder:/var/lib/mysql
       - ./deploy/my.cnf:/etc/mysql/my.cnf:ro
 
-  # Keycloak のデータは永続化しない。コンテナを作り直すたびに realm 定義から
-  # 入り直すので、テストを毎回同じ状態から始められる。ユーザの ID（= sub）は
-  # realm 定義で固定してあり、作り直しても変わらない。
+  # Keycloak's data is not persisted. Recreating the container imports the realm
+  # again, so tests always start from the same state. The user IDs (= sub) are
+  # fixed in the realm definition and survive a recreation.
   #
-  # ネットワークは avideo と共有する（network_mode）。issuer の URL は、
-  # ブラウザからも avideo のコンテナからも同じ名前で届かなければならない。
-  # avideo の entrypoint は自分のホスト名を 127.0.0.1 に向けるため、別の
-  # コンテナにいる Keycloak には、その名前では届かない。同じネットワークに
-  # 置けば、avideo からは 127.0.0.1:8081 で、Keycloak からは 127.0.0.1:443 で
-  # 互いに届く。avideo を作り直したら、keycloak も作り直すこと。
+  # It shares the network of avideo (network_mode). The issuer URL has to be
+  # reachable under the same name from the browser and from the avideo container.
+  # The entrypoint of avideo points its own host name at 127.0.0.1, so a Keycloak
+  # in another container cannot be reached under that name. On a shared network
+  # avideo reaches Keycloak at 127.0.0.1:8081 and Keycloak reaches avideo at
+  # 127.0.0.1:443. After recreating avideo, recreate keycloak too.
   keycloak:
     image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.8.0}
     command: start-dev --import-realm
@@ -56,15 +56,15 @@ services:
         condition: service_started
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER:-admin}"
-      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD を設定する}"
-      # 発行する issuer に使われる。ブラウザからのアクセス先と一致させる。
-      KC_HOSTNAME: "${KEYCLOAK_URL:?KEYCLOAK_URL を設定する}"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD}"
+      # Becomes the issuer. Must equal the address the browser uses.
+      KC_HOSTNAME: "${KEYCLOAK_URL:?set KEYCLOAK_URL}"
       KC_HTTP_ENABLED: "true"
       KC_HTTP_PORT: "${KEYCLOAK_PORT:-8081}"
-      # realm 定義の中の ${...} に入る値
-      AVIDEO_BASE_URL: "${AVIDEO_BASE_URL:?AVIDEO_BASE_URL を設定する}"
-      # Back-Channel Logout の通知先。Keycloak のコンテナから AVideo へ届く URL。
-      # 既定は http。AVideo の証明書は自己署名で、https にすると Keycloak が検証に失敗する。
+      # values for the ${...} placeholders in the realm definition
+      AVIDEO_BASE_URL: "${AVIDEO_BASE_URL:?set AVIDEO_BASE_URL}"
+      # Where back-channel logout notices go: a URL that reaches AVideo from the Keycloak container.
+      # http by default. AVideo's certificate is self-signed, and Keycloak fails to verify it over https.
       AVIDEO_BACKCHANNEL_BASE_URL: "${AVIDEO_BACKCHANNEL_BASE_URL:-http://${SERVER_NAME}}"
     volumes:
       - "${LOGINOIDC_REPO}/dev/keycloak/realm-loginoidc-test.json:/opt/keycloak/data/import/realm-loginoidc-test.json:ro"

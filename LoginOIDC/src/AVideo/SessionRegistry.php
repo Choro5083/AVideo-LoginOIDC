@@ -33,7 +33,7 @@ final class SessionRegistry implements SessionRevoker
     public function state(SessionMarker $marker): SessionState
     {
         $rows = Db::select(
-            'SELECT u.status, i.sessions_revoked_at,'
+            'SELECT u.status, i.sessions_revoked_at, i.users_id AS linked_user,'
             . ' (SELECT COUNT(*) FROM login_oidc_sessions s'
             . '   WHERE s.users_id = u.id AND s.sid = ? AND s.revoked_at IS NOT NULL) AS sid_revoked'
             . ' FROM users u LEFT JOIN login_oidc_identities i ON i.users_id = u.id WHERE u.id = ?',
@@ -41,13 +41,14 @@ final class SessionRegistry implements SessionRevoker
             [$marker->sessionId, $marker->userId],
         );
         if ($rows === []) {
-            return new SessionState(false, null, false);
+            return new SessionState(false, null, false, false);
         }
 
         return new SessionState(
             $rows[0]['status'] === 'a',
             $rows[0]['sessions_revoked_at'] === null ? null : (int) $rows[0]['sessions_revoked_at'],
             (int) $rows[0]['sid_revoked'] > 0,
+            $rows[0]['linked_user'] !== null,
         );
     }
 
