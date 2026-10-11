@@ -31,13 +31,13 @@ final class SettingsReport
             // 項目名は例外のメッセージの先頭に入っている（「項目名: 説明」）。
             [$setting, $message] = array_pad(explode(': ', $e->getMessage(), 2), 2, '');
 
-            return [Finding::error($message === '' ? 'settings' : $setting, $message === '' ? $setting : $message)];
+            return [Finding::error($message === '' ? 'settings' : $setting, '%s', $message === '' ? $setting : $message)];
         }
 
         try {
             return SettingsInspector::inspect($settings, self::groupExists(...), self::userExists(...));
         } catch (DbException $e) {
-            return [Finding::error('settings', 'Cannot check against the database: ' . $e->getMessage())];
+            return [Finding::error('settings', 'Cannot check against the database: %s', $e->getMessage())];
         }
     }
 
@@ -56,21 +56,22 @@ final class SettingsReport
             $settings->resolveClientSecret();
         } catch (InvalidSettingException $e) {
             [$setting, $message] = array_pad(explode(': ', $e->getMessage(), 2), 2, '');
-            $findings[] = Finding::error($setting, $message);
+            $findings[] = Finding::error($setting, '%s', $message);
         }
 
         try {
             $metadata = (new Discovery(Factory::httpClient($settings), $cache, $settings->allowInsecureHttp))
                 ->fetch($settings->issuer);
         } catch (OidcException $e) {
-            return [...$findings, Finding::error('issuer', 'The provider cannot be reached or is misconfigured: ' . $e->getMessage())];
+            return [...$findings, Finding::error('issuer', 'The provider cannot be reached or is misconfigured: %s', $e->getMessage())];
         }
 
         if (!in_array($settings->clientAuthMethod->value, $metadata->tokenEndpointAuthMethods, true)) {
             $findings[] = Finding::error(
                 'clientAuthMethod',
-                "The provider does not support {$settings->clientAuthMethod->value}. Supported: "
-                . implode(', ', $metadata->tokenEndpointAuthMethods),
+                'The provider does not support %s. Supported: %s',
+                $settings->clientAuthMethod->value,
+                implode(', ', $metadata->tokenEndpointAuthMethods),
             );
         }
         if ($settings->useUserInfo && $metadata->userinfoEndpoint === '') {

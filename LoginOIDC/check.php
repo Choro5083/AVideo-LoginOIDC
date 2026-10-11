@@ -32,12 +32,14 @@ try {
 $errors = count(array_filter($findings, static fn (Finding $f): bool => $f->level === Finding::ERROR));
 $warnings = count($findings) - $errors;
 $escape = static fn (string $text): string => htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+// 翻訳して、HTML に出せる形にする。
+$text = static fn (string $english, string|int ...$arguments): string => $escape(vsprintf(LoginOIDC::t($english), $arguments));
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?php echo $escape(getLanguage()); ?>">
 <head>
     <meta charset="utf-8">
-    <title>LoginOIDC settings check</title>
+    <title><?php echo $text('LoginOIDC settings check'); ?></title>
     <style>
         body { font-family: sans-serif; margin: 1.5em; color: #222; }
         h1 { font-size: 1.3em; }
@@ -51,29 +53,29 @@ $escape = static fn (string $text): string => htmlspecialchars($text, ENT_QUOTES
     </style>
 </head>
 <body>
-    <h1>LoginOIDC settings check</h1>
+    <h1><?php echo $text('LoginOIDC settings check'); ?></h1>
     <?php if ($findings === []) { ?>
-        <p class="ok">No problems found.</p>
+        <p class="ok"><?php echo $text('No problems found.'); ?></p>
     <?php } else { ?>
-        <p><span class="error"><?php echo $errors; ?> error(s)</span>, <span class="warning"><?php echo $warnings; ?> warning(s)</span></p>
+        <p><span class="error"><?php echo $text('%d error(s)', $errors); ?></span>, <span class="warning"><?php echo $text('%d warning(s)', $warnings); ?></span></p>
         <table>
-            <tr><th>Level</th><th>Setting</th><th>What is wrong</th></tr>
+            <tr><th><?php echo $text('Level'); ?></th><th><?php echo $text('Setting'); ?></th><th><?php echo $text('What is wrong'); ?></th></tr>
             <?php foreach ($findings as $finding) { ?>
                 <tr>
-                    <td class="<?php echo $escape($finding->level); ?>"><?php echo $escape($finding->level); ?></td>
+                    <td class="<?php echo $escape($finding->level); ?>"><?php echo $text($finding->level); ?></td>
                     <td><code><?php echo $escape($finding->setting); ?></code></td>
-                    <td><?php echo $escape($finding->message); ?></td>
+                    <td><?php echo $escape($finding->message(LoginOIDC::t(...))); ?></td>
                 </tr>
             <?php } ?>
         </table>
     <?php } ?>
     <?php if (!$checkedProvider) { ?>
-        <p>The provider was not contacted because the settings could not be read.</p>
+        <p><?php echo $text('The provider was not contacted because the settings could not be read.'); ?></p>
     <?php } ?>
     <dl>
-        <dt>Redirect URI to register at the provider</dt>
+        <dt><?php echo $text('Redirect URI to register at the provider'); ?></dt>
         <dd><code><?php echo $escape(LoginOIDC::callbackUrl()); ?></code></dd>
-        <dt>Back-channel logout URL</dt>
+        <dt><?php echo $text('Back-channel logout URL'); ?></dt>
         <dd><code><?php echo $escape(LoginOIDC::backchannelLogoutUrl()); ?></code></dd>
     </dl>
 </body>

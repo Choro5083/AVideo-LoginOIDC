@@ -14,7 +14,7 @@ use LoginOIDC\Oidc\LoginFlow;
 function loginOidcRequireEnabled(): void
 {
     if (empty(AVideoPlugin::loadPluginIfEnabled('LoginOIDC'))) {
-        loginOidcShowError('LoginOIDC is disabled.');
+        loginOidcShowError(__('LoginOIDC is disabled.', true));
     }
     try {
         $configured = LoginOIDC::settings()->isConfigured();
@@ -22,7 +22,7 @@ function loginOidcRequireEnabled(): void
         loginOidcFail('invalid settings', $e);
     }
     if (!$configured) {
-        loginOidcShowError('LoginOIDC is not configured.');
+        loginOidcShowError(LoginOIDC::t('LoginOIDC is not configured.'));
     }
 }
 
@@ -78,5 +78,9 @@ function loginOidcFail(string $summary, \Throwable $e, string $userMessage = 'Si
 {
     $reference = bin2hex(random_bytes(4));
     _error_log("LoginOIDC [{$reference}]: {$summary}: {$e->getMessage()}", AVideoLog::$ERROR);
-    loginOidcShowError("{$userMessage} If the problem persists, contact the administrator with this reference: {$reference}");
+    // 画面の文言は翻訳する。ログは、どの言語の利用者でも同じになるように英語のままにする。
+    loginOidcShowError(
+        LoginOIDC::t($userMessage) . ' '
+        . sprintf(LoginOIDC::t('If the problem persists, contact the administrator with this reference: %s'), $reference),
+    );
 }

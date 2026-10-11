@@ -96,7 +96,9 @@ final class SettingsInspector
                     if (!in_array($flag->value, $managed, true)) {
                         $findings[] = Finding::warning(
                             'flagMapping',
-                            "\"{$claimValue}\" maps to {$flag->value}, which is not in managedFlags. It is ignored.",
+                            '"%s" maps to %s, which is not in managedFlags. It is ignored.',
+                            (string) $claimValue,
+                            $flag->value,
                         );
                     }
                 }
@@ -106,7 +108,8 @@ final class SettingsInspector
                     // 管理対象なのに、付ける条件が無い。全員から外れる。isAdmin だと管理者がいなくなる。
                     $findings[] = Finding::warning(
                         'flagMapping',
-                        "No value maps to {$flag}. It will be removed from every user who signs in through the provider.",
+                        'No value maps to %s. It will be removed from every user who signs in through the provider.',
+                        $flag,
                     );
                 }
             }
@@ -118,7 +121,7 @@ final class SettingsInspector
         }
         foreach ($settings->managedGroups as $groupId) {
             if (!$groupExists($groupId)) {
-                $findings[] = Finding::error('managedGroups', "User group {$groupId} does not exist.");
+                $findings[] = Finding::error('managedGroups', 'User group %s does not exist.', $groupId);
             }
         }
         foreach ($settings->groupMapping as $claimValue => $groupIds) {
@@ -126,7 +129,9 @@ final class SettingsInspector
                 if (!in_array($groupId, $settings->managedGroups, true)) {
                     $findings[] = Finding::warning(
                         'groupMapping',
-                        "\"{$claimValue}\" maps to user group {$groupId}, which is not in managedGroups. It is ignored.",
+                        '"%s" maps to user group %s, which is not in managedGroups. It is ignored.',
+                        (string) $claimValue,
+                        $groupId,
                     );
                 }
             }
@@ -159,15 +164,15 @@ final class SettingsInspector
             }
             foreach ($settings->nativeLoginAllowlist as $username) {
                 if (!$userExists($username)) {
-                    $findings[] = Finding::warning('nativeLoginAllowlist', "User \"{$username}\" does not exist.");
+                    $findings[] = Finding::warning('nativeLoginAllowlist', 'User "%s" does not exist.', $username);
                 }
             }
         }
         foreach ($settings->encoderAddresses as $address) {
             if (!IpMatcher::isValidRange($address)) {
-                $findings[] = Finding::error('encoderAddresses', "\"{$address}\" is not an IP address or a CIDR range. It matches nothing.");
+                $findings[] = Finding::error('encoderAddresses', '"%s" is not an IP address or a CIDR range. It matches nothing.', $address);
             } elseif (IpMatcher::coversEverything($address)) {
-                $findings[] = Finding::error('encoderAddresses', "\"{$address}\" covers every address, which disables the native sign-in control.");
+                $findings[] = Finding::error('encoderAddresses', '"%s" covers every address, which disables the native sign-in control.', $address);
             }
         }
         if ($settings->nativeLoginMode !== NativeLoginMode::Allow && $settings->encoderAddresses === []) {
@@ -199,8 +204,7 @@ final class SettingsInspector
             }
             $findings[] = Finding::warning(
                 'syncRoleSource',
-                'Reading client roles needs view-clients, which lets the sync account read every client secret of the realm. '
-                . 'Groups need only view-users.',
+                'Reading client roles needs view-clients, which lets the sync account read every client secret of the realm. Groups need only view-users.',
             );
         }
         if ($settings->rolesClaimPath === '' && $settings->groupsClaimPath === '' && $settings->requiredClaimPath === '') {

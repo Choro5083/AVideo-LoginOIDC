@@ -5,7 +5,8 @@
 global $global;
 
 try {
-    $loginOidcLabel = LoginOIDC::settings()->buttonLabel;
+    // 既定のラベルには訳がある。利用者が書き換えたラベルは、訳が無いのでそのまま出る。
+    $loginOidcLabel = LoginOIDC::t(LoginOIDC::settings()->buttonLabel);
 } catch (\LoginOIDC\InvalidSettingException $e) {
     _error_log('LoginOIDC: sign-in button hidden because the settings are invalid: ' . $e->getMessage(), AVideoLog::$ERROR);
 

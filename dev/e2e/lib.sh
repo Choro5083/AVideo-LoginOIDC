@@ -67,6 +67,7 @@ user_field() { db "select $2 from users where user='$1'"; }
 sso_login() {
     local jar=$2 start=${3:-$AVIDEO_URL/plugin/LoginOIDC/login.php} location action callback
     location=$(curl -sk -c "$jar" -b "$jar" -o /dev/null -w '%{redirect_url}' -H 'Accept: text/html' "$start")
+    [ -n "$location" ] || { echo "not-started"; return; }
     # 自動リダイレクトから始めた場合は、プラグインの入口を1つ挟む
     case "$location" in *"/plugin/LoginOIDC/login.php"*)
         location=$(curl -sk -c "$jar" -b "$jar" -o /dev/null -w '%{redirect_url}' "$location") ;;

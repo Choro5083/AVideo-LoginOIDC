@@ -28,6 +28,17 @@ check "a non-admin cannot open it" 0 "$(curl -sk -b "$WORK/carol" "$AVIDEO_URL/p
 check "nor an anonymous visitor" 0 "$(curl -sk "$AVIDEO_URL/plugin/LoginOIDC/check.php" | grep -c 'LoginOIDC settings check')"
 contains "the plugin list offers the check" "Check settings" "$(plugin_list)"
 
+echo "languages (AVideo's language setting decides; English is the default)"
+contains "English by default" "No value maps to" "$(setting flagMapping '{"avideo-uploaders": ["canUpload"]}'; check_page)"
+page=$(curl -sk -b "$WORK/admin" -c "$WORK/admin" "$AVIDEO_URL/plugin/LoginOIDC/check.php?lang=ja_JP")
+contains "Japanese title when AVideo is set to Japanese" "LoginOIDC の設定の検査" "$page"
+contains "Japanese findings, with the values filled in" "isAdmin に対応する値がありません" "$page"
+contains "the plugin list is translated too" "設定を検査する" "$(plugin_list)"
+contains "and so is the sign-in button" "SSO でログイン" "$(curl -sk "$AVIDEO_URL/user?lang=ja_JP")"
+contains "the sign-in button is English for an English visitor" "Login with SSO" "$(curl -sk "$AVIDEO_URL/user?lang=en_US")"
+curl -sk -b "$WORK/admin" -c "$WORK/admin" -o /dev/null "$AVIDEO_URL/?lang=en_US"
+reset_settings
+
 echo "a broken mapping"
 setting flagMapping '{"avideo-admins": '
 page=$(check_page)

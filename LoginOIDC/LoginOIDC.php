@@ -6,6 +6,7 @@ declare(strict_types=1);
 use LoginOIDC\Admin\Finding;
 use LoginOIDC\Admin\SettingsReport;
 use LoginOIDC\AVideo\RequestGuard;
+use LoginOIDC\AVideo\Translations;
 use LoginOIDC\ClientAuthMethod;
 use LoginOIDC\InvalidSettingException;
 use LoginOIDC\NativeLoginMode;
@@ -14,6 +15,8 @@ use LoginOIDC\SyncRoleSource;
 
 require_once __DIR__ . '/../Plugin.abstract.php';
 require_once __DIR__ . '/src/autoload.php';
+
+Translations::register(__DIR__ . '/locale');
 
 /**
  * OpenID Connect によるログインを AVideo に追加する。
@@ -49,17 +52,30 @@ class LoginOIDC extends PluginAbstract
 
     public function getDescription()
     {
-        return 'Sign in with OpenID Connect (Authorization Code Flow + PKCE).'
-            . '<br>Redirect URI to register at the provider: <strong>' . self::callbackUrl() . '</strong>'
-            . '<br>Back-channel logout URL: <strong>' . self::backchannelLogoutUrl() . '</strong>'
+        return self::html('Sign in with OpenID Connect (Authorization Code Flow + PKCE).')
+            . '<br>' . self::html('Redirect URI to register at the provider') . ': <strong>' . self::callbackUrl() . '</strong>'
+            . '<br>' . self::html('Back-channel logout URL') . ': <strong>' . self::backchannelLogoutUrl() . '</strong>'
             . self::settingsStatus();
+    }
+
+    /** 本体の言語設定に合わせて文言を翻訳する。訳が無ければ、英語のまま返す。 */
+    public static function t(string $text): string
+    {
+        // 第2引数を付けないと、本体が引用符などを文字参照に変える。出力するときに、こちらでエスケープする。
+        return __($text, true);
+    }
+
+    /** 翻訳して、HTML に出せる形にする。 */
+    private static function html(string $text, string|int ...$arguments): string
+    {
+        return htmlspecialchars(vsprintf(self::t($text), $arguments), ENT_QUOTES, 'UTF-8');
     }
 
     /** プラグインの一覧に、設定の検査を開くボタンを出す。 */
     public function getPluginMenu()
     {
         return '<button onclick="avideoModalIframe(webSiteRootURL+\'plugin/LoginOIDC/check.php\')"'
-            . ' class="btn btn-primary btn-sm btn-xs btn-block"><i class="fas fa-stethoscope"></i> Check settings</button>';
+            . ' class="btn btn-primary btn-sm btn-xs btn-block"><i class="fas fa-stethoscope"></i> ' . self::html('Check settings') . '</button>';
     }
 
     /**
@@ -77,7 +93,7 @@ class LoginOIDC extends PluginAbstract
             $findings = SettingsReport::quick(self::settings(...));
         } catch (\Throwable $e) {
             // 説明欄を作れないだけで、プラグインの一覧まで落とさない。
-            return '<br><span class="label label-danger">The settings could not be checked</span> '
+            return '<br><span class="label label-danger">' . self::html('The settings could not be checked') . '</span> '
                 . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
         }
         $errors = array_values(array_filter($findings, static fn (Finding $f): bool => $f->level === Finding::ERROR));
@@ -88,14 +104,14 @@ class LoginOIDC extends PluginAbstract
 
         $html = '<br>';
         if ($errors !== []) {
-            $first = htmlspecialchars("{$errors[0]->setting}: {$errors[0]->message}", ENT_QUOTES, 'UTF-8');
-            $html .= '<span class="label label-danger">' . count($errors) . ' error(s) in the settings</span> ' . $first;
+            $first = htmlspecialchars("{$errors[0]->setting}: " . $errors[0]->message(self::t(...)), ENT_QUOTES, 'UTF-8');
+            $html .= '<span class="label label-danger">' . self::html('%d error(s) in the settings', count($errors)) . '</span> ' . $first;
         }
         if ($warnings > 0) {
-            $html .= ' <span class="label label-warning">' . $warnings . ' warning(s)</span>';
+            $html .= ' <span class="label label-warning">' . self::html('%d warning(s)', $warnings) . '</span>';
         }
 
-        return $html . ' &mdash; open "Check settings" for the details.';
+        return $html . ' ' . self::html('Open "Check settings" for the details.');
     }
 
     public static function callbackUrl(): string
@@ -166,9 +182,9 @@ class LoginOIDC extends PluginAbstract
         // --- ネイティブログイン ---
         $obj->nativeLoginMode = self::select(
             [
-                NativeLoginMode::Allow->value => '制限しない',
-                NativeLoginMode::DenyLinked->value => 'IdP に紐付いたユーザだけ禁止する',
-                NativeLoginMode::Allowlist->value => '許可リストのユーザだけ許可する',
+                NativeLoginMode::Allow->value => self::t('No restriction'),
+                NativeLoginMode::DenyLinked->value => self::t('Deny users linked to the provider'),
+                NativeLoginMode::Allowlist->value => self::t('Allow only the users in the allowlist'),
             ],
             NativeLoginMode::Allow->value,
         );
@@ -182,9 +198,9 @@ class LoginOIDC extends PluginAbstract
         $obj->syncClientSecretFile = '';
         $obj->syncRoleSource = self::select(
             [
-                SyncRoleSource::Groups->value => 'group（view-users で読める）',
-                SyncRoleSource::RealmRoles->value => 'realm role（view-realm が要る）',
-                SyncRoleSource::ClientRoles->value => 'client role（view-clients が要る。全 client のシークレットを読める権限）',
+                SyncRoleSource::Groups->value => self::t('Groups (readable with view-users)'),
+                SyncRoleSource::RealmRoles->value => self::t('Realm roles (needs view-realm)'),
+                SyncRoleSource::ClientRoles->value => self::t('Client roles (needs view-clients, which can read every client secret)'),
             ],
             SyncRoleSource::Groups->value,
         );
@@ -195,7 +211,7 @@ class LoginOIDC extends PluginAbstract
         $obj->debugLog = false;
 
         foreach (self::helpTexts() as $property => [$name, $description]) {
-            $this->addDataObjectHelper($property, $name, $description);
+            $this->addDataObjectHelper($property, self::t($name), $description === '' ? '' : self::t($description));
         }
 
         return $obj;
@@ -320,47 +336,47 @@ class LoginOIDC extends PluginAbstract
     private static function helpTexts(): array
     {
         return [
-            'issuer' => ['Issuer', 'IdP の issuer の URL。ここから .well-known/openid-configuration を読む'],
+            'issuer' => ['Issuer', 'URL of the provider\'s issuer. The plugin reads .well-known/openid-configuration from it.'],
             'clientId' => ['Client ID', ''],
-            'clientSecret' => ['Client secret', 'AVideo の DB に暗号化して保存される。ファイルで渡すなら空にして clientSecretFile を使う'],
-            'clientSecretFile' => ['Client secret のファイル', 'シークレットを書いたファイルのパス。指定すると clientSecret より優先する'],
-            'clientAuthMethod' => ['クライアント認証の方式', 'トークンエンドポイントでの認証の方式'],
-            'scopes' => ['Scope', '空白区切り。openid は必須'],
-            'useUserInfo' => ['UserInfo も読む', 'ID Token に必要な claim が入らない IdP で使う'],
-            'caCertFile' => ['CA 証明書のファイル', '独自の CA を使う場合のパス。空なら OS の既定を使う'],
-            'clockSkewSeconds' => ['時刻のずれの許容（秒）', 'ID Token の exp / iat の検証で許すずれ'],
-            'allowInsecureHttp' => ['http の IdP を許す（開発用）', 'issuer とエンドポイントに http を許す。通信を盗み見られるので、本番では使わない'],
-            'loginRateLimit' => ['ログインの回数の上限', '同じ接続元から、5 分間に受け付けるログインの開始とコールバックの回数。0 で制限しない。リバースプロキシの配下では、AVideo 本体でプロキシを信頼する設定をしないと、全員が同じ接続元として数えられる'],
-            'buttonLabel' => ['ログインボタンの表示', ''],
-            'autoRedirect' => ['未ログインなら IdP へ自動でリダイレクトする', '画面の表示だけが対象。API や動画ファイルは対象外'],
-            'createUsers' => ['初回ログイン時にユーザを作る', '無効にすると、事前に紐付けたユーザだけがログインできる'],
-            'usernameClaim' => ['username に使う claim', '作成時にだけ使う。作成後は変えない'],
-            'nameClaim' => ['名前に使う claim', ''],
-            'emailClaim' => ['メールアドレスに使う claim', ''],
-            'updateName' => ['ログインのたびに名前を更新する', ''],
-            'updateEmail' => ['ログインのたびにメールアドレスを更新する', ''],
-            'updateEmailVerified' => ['ログインのたびにメール確認の状態を更新する', 'email_verified claim から'],
-            'rolesClaimPath' => ['権限に使う claim のパス', 'ドット区切り。例: resource_access.avideo.roles。空なら権限に触れない'],
-            'managedFlags' => ['管理するフラグ', 'カンマ区切り。isAdmin, canUpload, canStream, canViewChart, canCreateMeet。ここに書いたフラグだけをログインのたびに上書きする'],
-            'flagMapping' => ['claim の値からフラグへの対応', 'JSON。例: {"admin": ["isAdmin"], "uploader": ["canUpload"]}'],
-            'requiredClaimPath' => ['ログインに必要な claim のパス', '空なら条件を付けない'],
-            'requiredClaimValues' => ['ログインに必要な値', 'カンマ区切り。どれかを含めばログインを許す'],
-            'groupsClaimPath' => ['user group に使う claim のパス', '空なら user group に触れない'],
-            'managedGroups' => ['管理する user group', 'user group の ID をカンマ区切りで。ここに書いた group だけをログインのたびに上書きする'],
-            'groupMapping' => ['claim の値から user group への対応', 'JSON。例: {"staff": [3]}'],
-            'rpInitiatedLogout' => ['ログアウト時に IdP もログアウトする', 'RP-Initiated Logout'],
-            'backchannelLogout' => ['IdP からのログアウト通知を受け付ける', 'Back-Channel Logout'],
-            'nativeLoginMode' => ['ネイティブログインの制御', 'ユーザ名とパスワードでのログインをどこまで許すか'],
-            'nativeLoginAllowlist' => ['ネイティブログインを許す username', '1行に1つ。制御が「許可リスト」のときに使う'],
-            'encoderAddresses' => ['Encoder のアドレス', '1行に1つ。IP か CIDR。ここからのログインには制御を掛けない'],
-            'syncEnabled' => ['Keycloak の同期を使う', 'cron から CLI を実行する'],
-            'syncAdminUrl' => ['Admin API の URL', '空なら issuer から導出する'],
-            'syncClientId' => ['同期用の Client ID', 'service account を持つ、同期専用の client'],
-            'syncClientSecretFile' => ['同期用の Client secret のファイル', 'シークレットは DB に保存しない。環境変数 LOGINOIDC_SYNC_CLIENT_SECRET でも渡せる'],
-            'syncRoleSource' => ['同期で読む割り当ての種類', 'ログイン時の claim（rolesClaimPath）と同じ内容になるように選ぶ。食い違うと、ログインと同期で権限が食い違う'],
-            'syncRoleClientId' => ['同期で読む client role の Client ID', '種類が client role のときに使う'],
-            'syncMaxDisableRatio' => ['1回の同期で無効化してよい割合（%）', '超えたら何も変更せずに止める'],
-            'debugLog' => ['詳細なログを出す', 'トークンの中身は出さない'],
+            'clientSecret' => ['Client secret', 'Stored encrypted in the AVideo database. Leave it empty and use clientSecretFile to pass it in a file.'],
+            'clientSecretFile' => ['Client secret file', 'Path of a file that contains the secret. When set, it takes precedence over clientSecret.'],
+            'clientAuthMethod' => ['Client authentication method', 'How the plugin authenticates at the token endpoint.'],
+            'scopes' => ['Scopes', 'Separated by spaces. openid is required.'],
+            'useUserInfo' => ['Also read UserInfo', 'For providers that do not put the needed claims in the ID Token.'],
+            'caCertFile' => ['CA certificate file', 'Path of the CA certificate when the provider uses a private CA. Empty uses the system default.'],
+            'clockSkewSeconds' => ['Allowed clock skew (seconds)', 'Tolerance when checking exp and iat of the ID Token.'],
+            'allowInsecureHttp' => ['Allow an http provider (development only)', 'Accepts http for the issuer and its endpoints. The traffic can be read on the network, so do not use it in production.'],
+            'loginRateLimit' => ['Sign-in rate limit', 'How many sign-in starts and callbacks are accepted from one address in 5 minutes. 0 disables the limit. Behind a reverse proxy, everyone is counted as one address unless AVideo is configured to trust the proxy.'],
+            'buttonLabel' => ['Sign-in button label', ''],
+            'autoRedirect' => ['Send anonymous visitors to the provider', 'Applies to page views only. APIs and video files are not affected.'],
+            'createUsers' => ['Create users on first sign-in', 'When disabled, only users linked in advance can sign in.'],
+            'usernameClaim' => ['Claim for the username', 'Used only when the user is created. The username is never changed afterwards.'],
+            'nameClaim' => ['Claim for the name', ''],
+            'emailClaim' => ['Claim for the e-mail address', ''],
+            'updateName' => ['Update the name on every sign-in', ''],
+            'updateEmail' => ['Update the e-mail address on every sign-in', ''],
+            'updateEmailVerified' => ['Update the e-mail verification state on every sign-in', 'From the email_verified claim.'],
+            'rolesClaimPath' => ['Claim path for permissions', 'Dot-separated, for example resource_access.avideo.roles. Empty leaves the permissions untouched.'],
+            'managedFlags' => ['Managed flags', 'Comma-separated: isAdmin, canUpload, canStream, canViewChart, canCreateMeet. Only the flags listed here are overwritten on every sign-in.'],
+            'flagMapping' => ['Claim values to flags', 'JSON, for example {"admin": ["isAdmin"], "uploader": ["canUpload"]}'],
+            'requiredClaimPath' => ['Claim path required to sign in', 'Empty applies no requirement.'],
+            'requiredClaimValues' => ['Values required to sign in', 'Comma-separated. Having any one of them is enough.'],
+            'groupsClaimPath' => ['Claim path for user groups', 'Empty leaves the user groups untouched.'],
+            'managedGroups' => ['Managed user groups', 'Comma-separated user group IDs. Only the groups listed here are overwritten on every sign-in.'],
+            'groupMapping' => ['Claim values to user groups', 'JSON, for example {"staff": [3]}'],
+            'rpInitiatedLogout' => ['Sign out of the provider when signing out of AVideo', 'RP-Initiated Logout'],
+            'backchannelLogout' => ['Accept logout notices from the provider', 'Back-Channel Logout'],
+            'nativeLoginMode' => ['Native sign-in control', 'How far sign-in with a username and password is allowed.'],
+            'nativeLoginAllowlist' => ['Usernames allowed to sign in natively', 'One per line. Used when the control is set to the allowlist.'],
+            'encoderAddresses' => ['Encoder addresses', 'One per line, an IP address or a CIDR range. Sign-ins from these addresses are not controlled.'],
+            'syncEnabled' => ['Use the Keycloak sync', 'Run the CLI from cron.'],
+            'syncAdminUrl' => ['Admin API URL', 'Empty derives it from the issuer.'],
+            'syncClientId' => ['Client ID for the sync', 'A client dedicated to the sync, with a service account.'],
+            'syncClientSecretFile' => ['Client secret file for the sync', 'The secret is never stored in the database. It can also be passed in the environment variable LOGINOIDC_SYNC_CLIENT_SECRET.'],
+            'syncRoleSource' => ['What the sync reads', 'Choose what gives the same values as the sign-in claim (rolesClaimPath). If they differ, sign-in and sync assign different permissions.'],
+            'syncRoleClientId' => ['Client ID whose client roles the sync reads', 'Used when the sync reads client roles.'],
+            'syncMaxDisableRatio' => ['Share of users one sync may disable (%)', 'Above it, the sync stops without changing anything.'],
+            'debugLog' => ['Verbose log', 'Token contents are never logged.'],
         ];
     }
 }
