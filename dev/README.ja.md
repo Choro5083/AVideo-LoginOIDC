@@ -1,5 +1,7 @@
 # 開発環境
 
+[English](README.md) | 日本語（原本）
+
 AVideo 本体・MariaDB・Keycloak を Docker で動かし、プラグインをマウントして試す。
 
 AVideo 本体のリポジトリにある `docker-compose.yml` をそのまま使い、このディレクトリの `compose.dev.yml` を重ねる。本体の定義を写して持たないのは、本体の版を上げたときに追従し忘れないようにするため。
@@ -105,15 +107,15 @@ bash dev/e2e/run-all.sh
 
 | シナリオ | 内容 |
 |---|---|
-| `01-login.sh` | ユーザの作成、権限の反映、コールバックの再送の拒否、戻り先、ログインに必要な条件 |
+| `01-login.sh` | ユーザの作成、権限の反映、コールバックの再送の拒否、戻り先、ログインに必要な条件、手動での紐付け |
 | `02-logout.sh` | RP-Initiated Logout、Back-Channel Logout |
 | `03-native.sh` | ネイティブログインの制御、Encoder の例外、Cookie からの復元 |
 | `04-auto-redirect.sh` | 未ログイン時の自動リダイレクト |
 | `05-upload.sh` | SSO のユーザが Encoder を通して動画を投稿する（実際に変換するので時間がかかる） |
-| `06-admin.sh` | 設定の検査のページ、プラグインの一覧への表示、シークレットの暗号化 |
+| `06-admin.sh` | 設定の検査のページ、プラグインの一覧への表示、画面の言語、シークレットの暗号化 |
 | `07-sync.sh` | Keycloak の同期 |
 
-**`07-sync.sh` は Keycloak のユーザを変更・削除する。** そのため最後に置いてある。 流し終えたら、Keycloak のコンテナを作り直して元に戻す（「作り直す」を参照）。続けてもう一度流すときも、先に作り直す。
+**`07-sync.sh` は Keycloak のユーザを変更・削除する。** そのため最後に置いてある。流し終えたら、Keycloak のコンテナを作り直して元に戻す（「作り直す」を参照）。続けてもう一度流すときも、先に作り直す。
 
 **Encoder は、状態の問い合わせを受けたときにキューの処理を始める。** ふだんは、開いている Encoder の画面が定期的に問い合わせている。画面を開かずにアップロードだけ行うと、変換が始まらない（`05-upload.sh` は、待っている間に自分で問い合わせている）。
 
@@ -147,7 +149,7 @@ docker exec -u www-data -e LOGINOIDC_SYNC_CLIENT_SECRET=dev-only-sync-secret avi
 - `groups`: group の名前（例: `["avideo-uploaders", "avideo-viewers"]`）
 - `resource_access.avideo.roles`: client role
 
-`setup-plugin.php` は `groups` の方で権限を決める設定を入れる。同期用の client が `view-users` だけで group を読めるので、ログイン時と同期で同じ値を使える（`docs/spec.md` の「権限の元になる値の読み方」）。
+`setup-plugin.php` は `groups` の方で権限を決める設定を入れる。同期用の client が `view-users` だけで group を読めるので、ログイン時と同期で同じ値を使える（[docs/spec.ja.md](../docs/spec.ja.md) の「権限の元になる値の読み方」）。
 
 Back-Channel Logout の通知先は `http://<HOST>/plugin/LoginOIDC/backchannelLogout.php`（http）。AVideo の証明書が自己署名で、https にすると Keycloak が検証に失敗するため。変えるなら `AVIDEO_BACKCHANNEL_BASE_URL` を設定する。
 
@@ -191,7 +193,7 @@ docker exec avideo-avideo-1 bash -c "rm -f /var/www/html/AVideo/Encoder/videos/c
 
 **`avideo` のコンテナの中では、自分のホスト名（`SERVER_NAME`）が 127.0.0.1 を指す。** entrypoint が `/etc/hosts` に書き足すため。Keycloak を別のコンテナとして同じホスト名で公開すると、ブラウザからは届くが、`avideo` のコンテナからは届かない（Discovery が失敗する）。`compose.dev.yml` では、Keycloak を `avideo` と同じネットワークに置いて（`network_mode: "service:avideo"`）解決してある。そのため Keycloak のポートは `avideo` のサービスで公開していて、`avideo` を作り直したら `keycloak` も作り直す必要がある。
 
-**Encoder の画面に `Undefined variable $aURL` と `$json_file` の Warning が出る。** AVideo の証明書が自己署名のため、Encoder が AVideo の設定を取りに行って TLS の検証に失敗している（Warning の文面は、失敗を記録する箇所にある本家の別の不具合によるもの）。開発環境では、Encoder の設定ファイルで検証を切る。DB を作り直してインストーラを流し直したときは、もう一度入れる。
+**Encoder の画面に `Undefined variable $aURL` と `$json_file` の Warning が出る。** AVideo の証明書が自己署名のため、Encoder が AVideo の設定を取りに行って TLS の検証に失敗している（Warning の文面は、失敗を記録する箇所にある本家の別の不具合によるもの）。開発環境では、Encoder の設定ファイルで検証を切る。`dev/prepare.sh` がこれを行う。手で行うなら次の通り。
 
 ```bash
 docker exec avideo-avideo-1 bash -c 'cd /var/www/html/AVideo/Encoder/videos && grep -q disableSSLVerification configuration.php \
