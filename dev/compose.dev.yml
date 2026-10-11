@@ -1,0 +1,58 @@
+# 開発用の追加定義。AVideo 本体の docker-compose.yml に重ねて使う（dev/README.md）。
+#
+#   docker compose -f <AVideo>/docker-compose.yml -f <このファイル> up -d ...
+#
+# 相対パスは1つ目の compose ファイルの場所から解決されるため、
+# このリポジトリのパスは LOGINOIDC_REPO で受け取る。
+services:
+  avideo:
+    volumes:
+      - "${LOGINOIDC_REPO:?LOGINOIDC_REPO を設定する}/LoginOIDC:/var/www/html/AVideo/plugin/LoginOIDC"
+
+  # DB は MariaDB の LTS に固定する。本家の定義は Dockerfile.mariadb で
+  # mariadb:latest（短期サポートの版）を使うため、作り直すたびに版が変わりうる。
+  # build を外してイメージを直接指定し、本家の設定ファイルはマウントで引き継ぐ。
+  #
+  # データは AVideo のツリーの外（名前付きボリューム）に置く。本家の定義は
+  # ./.compose/db に置くが、avideo の entrypoint が起動時に AVideo のツリー
+  # 全体を www-data に chown するため、DB のデータの持ち主まで変わり、
+  # MariaDB が自分のデータを読めなくなる（エラー 1018）。
+  database:
+    image: "mariadb:${MARIADB_VERSION:-12.3}"
+    build: !reset null
+    volumes:
+      - avideo_db:/var/lib/mysql
+      - ./deploy/my.cnf:/etc/mysql/my.cnf:ro
+
+  database_encoder:
+    image: "mariadb:${MARIADB_VERSION:-12.3}"
+    build: !reset null
+    volumes:
+      - avideo_db_encoder:/var/lib/mysql
+      - ./deploy/my.cnf:/etc/mysql/my.cnf:ro
+
+  # Keycloak のデータは永続化しない。コンテナを作り直すたびに realm 定義から
+  # 入り直すので、テストを毎回同じ状態から始められる。ユーザの ID（= sub）は
+  # realm 定義で固定してあり、作り直しても変わらない。
+  keycloak:
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.8.0}
+    command: start-dev --import-realm
+    restart: "unless-stopped"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER:-admin}"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD を設定する}"
+      # 発行する issuer に使われる。ブラウザからのアクセス先と一致させる。
+      KC_HOSTNAME: "${KEYCLOAK_URL:?KEYCLOAK_URL を設定する}"
+      KC_HTTP_ENABLED: "true"
+      # realm 定義の中の ${...} に入る値
+      AVIDEO_BASE_URL: "${AVIDEO_BASE_URL:?AVIDEO_BASE_URL を設定する}"
+    ports:
+      - "${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - "${LOGINOIDC_REPO}/dev/keycloak/realm-loginoidc-test.json:/opt/keycloak/data/import/realm-loginoidc-test.json:ro"
+    networks:
+      - app_net
+
+volumes:
+  avideo_db:
+  avideo_db_encoder:

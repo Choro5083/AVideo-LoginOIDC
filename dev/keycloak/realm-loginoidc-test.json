@@ -1,0 +1,167 @@
+{
+  "realm": "loginoidc-test",
+  "enabled": true,
+  "sslRequired": "none",
+  "roles": {
+    "client": {
+      "avideo": [
+        {
+          "name": "admin"
+        },
+        {
+          "name": "uploader"
+        },
+        {
+          "name": "viewer"
+        }
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "avideo",
+      "name": "AVideo (LoginOIDC)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-only-avideo-secret",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "${AVIDEO_BASE_URL}/*"
+      ],
+      "webOrigins": [
+        "${AVIDEO_BASE_URL}"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${AVIDEO_BASE_URL}/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "client roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "config": {
+            "usermodel.clientRoleMapping.clientId": "avideo",
+            "claim.name": "resource_access.avideo.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "avideo-sync",
+      "name": "AVideo (LoginOIDC sync)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-only-sync-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "id": "a11ce000-0000-4000-8000-000000000001",
+      "username": "alice",
+      "enabled": true,
+      "email": "alice@example.com",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "avideo": [
+          "admin"
+        ]
+      }
+    },
+    {
+      "id": "b0b00000-0000-4000-8000-000000000002",
+      "username": "bob",
+      "enabled": true,
+      "email": "bob@example.com",
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Uploader",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "bob",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "avideo": [
+          "uploader",
+          "viewer"
+        ]
+      }
+    },
+    {
+      "id": "ca401000-0000-4000-8000-000000000003",
+      "username": "carol",
+      "enabled": true,
+      "email": "carol@example.com",
+      "emailVerified": true,
+      "firstName": "Carol",
+      "lastName": "Viewer",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "carol",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "avideo": [
+          "viewer"
+        ]
+      }
+    },
+    {
+      "id": "da7e0000-0000-4000-8000-000000000004",
+      "username": "dave",
+      "enabled": true,
+      "email": "dave@example.com",
+      "emailVerified": false,
+      "firstName": "Dave",
+      "lastName": "Norole",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dave",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "service-account-avideo-sync",
+      "enabled": true,
+      "serviceAccountClientId": "avideo-sync",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users"
+        ]
+      }
+    }
+  ]
+}

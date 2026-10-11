@@ -1,0 +1,115 @@
+# 開発環境
+
+AVideo 本体・MariaDB・Keycloak を Docker で動かし、プラグインをマウントして試す。
+
+AVideo 本体のリポジトリにある `docker-compose.yml` をそのまま使い、このディレクトリの `compose.dev.yml` を重ねる。本体の定義を写して持たないのは、本体の版を上げたときに追従し忘れないようにするため。
+
+## 構成
+
+| サービス | 内容 |
+|---|---|
+| `avideo` | AVideo 本体（本家の Dockerfile でビルド）。Encoder も同じコンテナに入る |
+| `database` / `database_encoder` | MariaDB（LTS に固定。`MARIADB_VERSION` で変えられる） |
+| `memcached` | 本家の定義のまま |
+| `keycloak` | テスト用の realm を取り込んで起動する |
+
+本家の定義にある `live`（配信サーバ）は起動しない。
+
+## 前提
+
+- Docker と Docker Compose（`build: !reset null` を使うので v2.24 以降）
+- ブラウザから見えるホスト名。以下では `<HOST>` と書く
+
+## 準備
+
+1. AVideo 本体を、対象の版で取得する。
+
+   ```bash
+   git clone --depth 1 --branch <版> https://github.com/WWBN/AVideo.git avideo
+   ```
+
+2. `avideo/.env` を作る。本家の `env.example` を元に、次の値を設定する。
+
+   ```bash
+   SERVER_NAME=<HOST>
+   CREATE_TLS_CERTIFICATE=yes
+   RUN_CERTBOT=no
+   ENABLE_PHPMYADMIN=no
+   SYSTEM_ADMIN_PASSWORD=<AVideo の管理者パスワード>
+   CPUS_LIMIT=2
+   MEMORY_LIMIT=2G
+
+   # compose.dev.yml が使う値
+   LOGINOIDC_REPO=<このリポジトリの絶対パス>
+   KEYCLOAK_ADMIN_PASSWORD=<Keycloak の管理者パスワード>
+   KEYCLOAK_URL=http://<HOST>:8081
+   AVIDEO_BASE_URL=https://<HOST>
+   ```
+
+   `KEYCLOAK_URL` は Keycloak が発行する issuer に使われる。ブラウザからのアクセス先と一致させる。
+
+## 起動
+
+AVideo 本体のディレクトリで実行する。
+
+```bash
+cd avideo
+docker compose -f docker-compose.yml -f <このリポジトリ>/dev/compose.dev.yml \
+  up -d avideo database database_encoder memcached keycloak
+```
+
+初回はイメージのビルドと AVideo のインストールが走る。`avideo` が `healthy` になれば完了。
+
+| 対象 | URL |
+|---|---|
+| AVideo | `https://<HOST>/`（証明書は自己署名） |
+| Keycloak | `http://<HOST>:8081/` |
+| Discovery | `http://<HOST>:8081/realms/loginoidc-test/.well-known/openid-configuration` |
+
+## テスト用の realm
+
+`keycloak/realm-loginoidc-test.json`。realm 名は `loginoidc-test`。
+
+| client | 用途 | シークレット |
+|---|---|---|
+| `avideo` | ログイン | `dev-only-avideo-secret` |
+| `avideo-sync` | 同期（service account。`view-users` / `query-users` だけを持つ） | `dev-only-sync-secret` |
+
+| ユーザ | パスワード | client role（`avideo`） |
+|---|---|---|
+| `alice` | `alice` | `admin` |
+| `bob` | `bob` | `uploader`、`viewer` |
+| `carol` | `carol` | `viewer` |
+| `dave` | `dave` | なし（メールアドレスも未確認） |
+
+client role は `resource_access.avideo.roles` として ID Token と UserInfo に入る。
+
+**シークレットとパスワードは開発専用の固定値。** この realm を外部から届く場所で動かさない。
+
+## 作り直す
+
+**Keycloak**: データを永続化していないので、コンテナを作り直せば realm 定義から入り直す。ユーザの ID（= `sub`）は realm 定義で固定してあり、作り直しても変わらない。
+
+```bash
+docker compose -f ... -f ... up -d --force-recreate keycloak
+```
+
+**AVideo と DB**: ボリュームと、AVideo のインストール状態を消す。
+
+```bash
+docker compose -f ... -f ... down
+docker volume rm avideo_avideo_db avideo_avideo_db_encoder
+sudo rm -rf .compose/videos
+docker compose -f ... -f ... up -d avideo database database_encoder memcached keycloak
+```
+
+## はまった点
+
+**`avideo` の entrypoint は、起動時に AVideo のツリー全体の持ち主を `www-data` に変える。** 本体のディレクトリをそのままマウントしているため、ホスト側のファイルも変わる。
+
+- 本家の定義は DB のデータを `./.compose/db` に置くので、MariaDB が自分のデータを読めなくなり、AVideo のインストールがエラー 1018 で失敗する。`compose.dev.yml` で名前付きボリュームに逃がしてある
+- `avideo/.env` も `www-data` の持ち物になる。起動後に読み書きするときは `sudo` が要る
+
+**本家の定義は `mariadb:latest` を使う。** 短期サポートの版になることがあり、作り直すたびに版が変わりうる。`compose.dev.yml` で LTS に固定してある。
+
+**Keycloak のデータ用に名前付きボリュームを付けると起動しない。** ボリュームが root の持ち物になり、Keycloak（uid 1000）が書けないため。永続化しない構成にしてある。
