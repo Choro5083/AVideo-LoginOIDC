@@ -56,6 +56,18 @@
             "access.token.claim": "true",
             "userinfo.token.claim": "true"
           }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
         }
       ]
     },
@@ -89,11 +101,9 @@
           "temporary": false
         }
       ],
-      "clientRoles": {
-        "avideo": [
-          "admin"
-        ]
-      }
+      "groups": [
+        "/avideo-admins"
+      ]
     },
     {
       "id": "b0b00000-0000-4000-8000-000000000002",
@@ -110,12 +120,10 @@
           "temporary": false
         }
       ],
-      "clientRoles": {
-        "avideo": [
-          "uploader",
-          "viewer"
-        ]
-      }
+      "groups": [
+        "/avideo-uploaders",
+        "/avideo-viewers"
+      ]
     },
     {
       "id": "ca401000-0000-4000-8000-000000000003",
@@ -132,11 +140,9 @@
           "temporary": false
         }
       ],
-      "clientRoles": {
-        "avideo": [
-          "viewer"
-        ]
-      }
+      "groups": [
+        "/avideo-viewers"
+      ]
     },
     {
       "id": "da7e0000-0000-4000-8000-000000000004",
@@ -162,6 +168,32 @@
         "realm-management": [
           "view-users",
           "query-users"
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "avideo-admins",
+      "clientRoles": {
+        "avideo": [
+          "admin"
+        ]
+      }
+    },
+    {
+      "name": "avideo-uploaders",
+      "clientRoles": {
+        "avideo": [
+          "uploader"
+        ]
+      }
+    },
+    {
+      "name": "avideo-viewers",
+      "clientRoles": {
+        "avideo": [
+          "viewer"
         ]
       }
     }

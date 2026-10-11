@@ -55,9 +55,14 @@ $data->clientId = 'avideo';
 $data->clientSecret = 'dev-only-avideo-secret';
 // 開発環境の Keycloak は http で動かしている。
 $data->allowInsecureHttp = true;
-$data->rolesClaimPath = 'resource_access.avideo.roles';
+// 権限は group で決める。同期用の client が view-users だけで group を読めるので、
+// ログイン時（claim）と同期（Admin API）で同じ値を使える。
+$data->rolesClaimPath = 'groups';
 $data->managedFlags = 'isAdmin, canUpload';
-$data->flagMapping->value = '{"admin": ["isAdmin"], "uploader": ["canUpload"]}';
+$data->flagMapping->value = '{"avideo-admins": ["isAdmin"], "avideo-uploaders": ["canUpload"]}';
+$data->syncEnabled = true;
+$data->syncClientId = 'avideo-sync';
+$data->syncRoleSource->value = 'groups';
 if (empty($plugin->setDataObject($data))) {
     fwrite(STDERR, "設定を保存できなかった\n");
     exit(1);

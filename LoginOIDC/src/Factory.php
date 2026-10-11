@@ -7,6 +7,7 @@ namespace LoginOIDC;
 
 use LoginOIDC\AVideo\AVideoIdentityStore;
 use LoginOIDC\AVideo\AVideoUserDirectory;
+use LoginOIDC\AVideo\SessionRegistry;
 use LoginOIDC\Http\CurlHttpClient;
 use LoginOIDC\Http\HttpClient;
 use LoginOIDC\Oidc\Cache;
@@ -21,6 +22,8 @@ use LoginOIDC\Oidc\SecretBasicAuthenticator;
 use LoginOIDC\Oidc\SecretPostAuthenticator;
 use LoginOIDC\Oidc\TokenClient;
 use LoginOIDC\Oidc\UserInfoClient;
+use LoginOIDC\Sync\KeycloakDirectory;
+use LoginOIDC\Sync\Synchronizer;
 use LoginOIDC\User\Provisioner;
 
 /** 設定から、処理に使うオブジェクトを組み立てる。 */
@@ -68,6 +71,46 @@ final class Factory
             new JwtVerifier(new JwksProvider($http, $cache), $settings->clockSkewSeconds),
             $settings->issuer,
             $settings->clientId,
+        );
+    }
+
+    /**
+     * @param  string $syncSecretFromEnvironment 環境変数 LOGINOIDC_SYNC_CLIENT_SECRET の値
+     * @throws InvalidSettingException
+     * @throws \LoginOIDC\Oidc\OidcException Discovery に失敗したとき
+     */
+    public static function synchronizer(Settings $settings, Cache $cache, string $syncSecretFromEnvironment): Synchronizer
+    {
+        if ($settings->syncClientId === '') {
+            throw new InvalidSettingException('syncClientId: not configured');
+        }
+        $adminUrl = $settings->syncAdminUrl !== ''
+            ? $settings->syncAdminUrl
+            : KeycloakDirectory::adminUrlFromIssuer($settings->issuer);
+        if ($adminUrl === '') {
+            throw new InvalidSettingException('syncAdminUrl: cannot be derived from the issuer, set it explicitly');
+        }
+
+        $http = self::httpClient($settings);
+        $metadata = (new Discovery($http, $cache, $settings->allowInsecureHttp))->fetch($settings->issuer);
+        $users = new AVideoUserDirectory();
+
+        return new Synchronizer(
+            $settings,
+            new AVideoIdentityStore(),
+            $users,
+            new SessionRegistry(),
+            new KeycloakDirectory(
+                $http,
+                new SecretBasicAuthenticator(
+                    $settings->syncClientId,
+                    $settings->resolveSyncClientSecret($syncSecretFromEnvironment),
+                ),
+                $metadata->tokenEndpoint,
+                $adminUrl,
+                $settings->syncRoleSource,
+                $settings->syncRoleClientId,
+            ),
         );
     }
 

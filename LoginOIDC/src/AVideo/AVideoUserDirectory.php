@@ -138,6 +138,11 @@ final class AVideoUserDirectory implements UserDirectory
         }
     }
 
+    public function setActive(int $userId, bool $active): void
+    {
+        Db::execute('UPDATE users SET status = ?, modified = NOW() WHERE id = ?', 'si', [$active ? 'a' : 'i', $userId]);
+    }
+
     private static function cleanName(string $name): string
     {
         return mb_substr(trim(strip_tags($name)), 0, self::NAME_MAX_LENGTH);

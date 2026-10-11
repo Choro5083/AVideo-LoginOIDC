@@ -137,6 +137,17 @@ final class Settings
         return self::readSecret('clientSecretFile', $this->clientSecretFile, $this->clientSecret, 'clientSecret');
     }
 
+    /**
+     * 同期用の client のシークレット。DB には保存しない。環境変数かファイルで受け取る。
+     *
+     * @param  string $fromEnvironment 環境変数 LOGINOIDC_SYNC_CLIENT_SECRET の値。無ければ空文字
+     * @throws InvalidSettingException
+     */
+    public function resolveSyncClientSecret(string $fromEnvironment): string
+    {
+        return self::readSecret('syncClientSecretFile', $this->syncClientSecretFile, $fromEnvironment, 'syncClientSecretFile');
+    }
+
     /** @throws InvalidSettingException */
     private static function readSecret(string $fileSetting, string $file, string $inline, string $inlineSetting): string
     {

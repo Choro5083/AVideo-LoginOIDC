@@ -88,6 +88,15 @@ docker exec avideo-avideo-1 bash -c "cd /opt/loginoidc && php vendor/bin/phpunit
 
 AVideo 本体の `vendor/bin/phpunit` は使わない。本体に同梱されている PHPUnit は一部のファイルが欠けていて動かない。
 
+## 同期を試す
+
+```bash
+docker exec -u www-data -e LOGINOIDC_SYNC_CLIENT_SECRET=dev-only-sync-secret avideo-avideo-1 \
+  php /var/www/html/AVideo/plugin/LoginOIDC/cli/sync.php --dry-run
+```
+
+`-u www-data` を付ける。root で実行すると、キャッシュのファイルが root の持ち物になり、Web 側から読めなくなる。
+
 ## テスト用の realm
 
 `keycloak/realm-loginoidc-test.json`。realm 名は `loginoidc-test`。
@@ -97,14 +106,19 @@ AVideo 本体の `vendor/bin/phpunit` は使わない。本体に同梱されて
 | `avideo` | ログイン | `dev-only-avideo-secret` |
 | `avideo-sync` | 同期（service account。`view-users` / `query-users` だけを持つ） | `dev-only-sync-secret` |
 
-| ユーザ | パスワード | client role（`avideo`） |
-|---|---|---|
-| `alice` | `alice` | `admin` |
-| `bob` | `bob` | `uploader`、`viewer` |
-| `carol` | `carol` | `viewer` |
-| `dave` | `dave` | なし（メールアドレスも未確認） |
+| ユーザ | パスワード | group | client role（group から継承） |
+|---|---|---|---|
+| `alice` | `alice` | `avideo-admins` | `admin` |
+| `bob` | `bob` | `avideo-uploaders`、`avideo-viewers` | `uploader`、`viewer` |
+| `carol` | `carol` | `avideo-viewers` | `viewer` |
+| `dave` | `dave` | なし（メールアドレスも未確認） | なし |
 
-client role は `resource_access.avideo.roles` として ID Token と UserInfo に入る。
+権限は group で配り、group に client role を割り当ててある。ID Token と UserInfo には、両方が入る。
+
+- `groups`: group の名前（例: `["avideo-uploaders", "avideo-viewers"]`）
+- `resource_access.avideo.roles`: client role
+
+`setup-plugin.php` は `groups` の方で権限を決める設定を入れる。同期用の client が `view-users` だけで group を読めるので、ログイン時と同期で同じ値を使える（`docs/spec.md` の「権限の元になる値の読み方」）。
 
 Back-Channel Logout の通知先は `http://<HOST>/plugin/LoginOIDC/backchannelLogout.php`（http）。AVideo の証明書が自己署名で、https にすると Keycloak が検証に失敗するため。変えるなら `AVIDEO_BACKCHANNEL_BASE_URL` を設定する。
 

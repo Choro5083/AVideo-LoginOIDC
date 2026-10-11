@@ -5,14 +5,16 @@ declare(strict_types=1);
 
 namespace LoginOIDC\Tests\Support;
 
+use LoginOIDC\Session\SessionRevoker;
+use LoginOIDC\Sync\LinkedIdentity;
 use LoginOIDC\User\DuplicateIdentityException;
 use LoginOIDC\User\IdentityStore;
 use LoginOIDC\User\LocalUser;
 use LoginOIDC\User\NewUser;
 use LoginOIDC\User\UserDirectory;
 
-/** ユーザと対応を配列で持つ。UserDirectory と IdentityStore の両方を兼ねる。 */
-final class InMemoryUsers implements UserDirectory, IdentityStore
+/** ユーザと対応を配列で持つ。UserDirectory、IdentityStore、SessionRevoker を兼ねる。 */
+final class InMemoryUsers implements UserDirectory, IdentityStore, SessionRevoker
 {
     /** @var array<int, array{username: string, name: string, email: string, emailVerified: bool, active: bool, flags: array<string, bool>, groups: list<int>}> */
     public array $users = [];
@@ -22,6 +24,12 @@ final class InMemoryUsers implements UserDirectory, IdentityStore
 
     /** @var list<int> */
     public array $logins = [];
+
+    /** @var list<int> 同期が無効化したユーザ */
+    public array $disabledBySync = [];
+
+    /** @var array<int, int> ユーザの ID → 全セッションを終わらせた時刻 */
+    public array $revoked = [];
 
     /** link() の直前に1度だけ呼ぶ。同時に来た別のリクエストが先に対応を作った状況を再現する。 */
     public ?\Closure $beforeLink = null;
@@ -102,6 +110,45 @@ final class InMemoryUsers implements UserDirectory, IdentityStore
             throw new DuplicateIdentityException('duplicate');
         }
         $this->links[$key] = $userId;
+    }
+
+    public function allLinked(string $issuer): array
+    {
+        $result = [];
+        foreach ($this->links as $key => $userId) {
+            [$linkIssuer, $subject] = explode("\n", $key, 2);
+            if ($linkIssuer === $issuer) {
+                $result[] = new LinkedIdentity(
+                    $userId,
+                    $this->users[$userId]['username'],
+                    $subject,
+                    $this->users[$userId]['active'],
+                    in_array($userId, $this->disabledBySync, true),
+                );
+            }
+        }
+
+        return $result;
+    }
+
+    public function setDisabledBySync(int $userId, bool $disabled): void
+    {
+        $this->disabledBySync = array_values(array_diff($this->disabledBySync, [$userId]));
+        if ($disabled) {
+            $this->disabledBySync[] = $userId;
+        }
+    }
+
+    public function setActive(int $userId, bool $active): void
+    {
+        $this->users[$userId]['active'] = $active;
+    }
+
+    public function revokeAllOfUser(int $userId, int $now): int
+    {
+        $this->revoked[$userId] = $now;
+
+        return 1;
     }
 
     public function recordLogin(int $userId): void

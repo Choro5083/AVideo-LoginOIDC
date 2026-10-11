@@ -36,4 +36,7 @@ interface UserDirectory
      * @param list<int> $remove
      */
     public function changeGroups(int $userId, array $add, array $remove): void;
+
+    /** ユーザを有効・無効にする。削除はしない。 */
+    public function setActive(int $userId, bool $active): void;
 }

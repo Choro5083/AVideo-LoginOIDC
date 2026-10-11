@@ -6,10 +6,11 @@ declare(strict_types=1);
 namespace LoginOIDC\AVideo;
 
 use LoginOIDC\Session\SessionMarker;
+use LoginOIDC\Session\SessionRevoker;
 use LoginOIDC\Session\SessionState;
 
 /** IdP のセッションの記録と、その無効化。 */
-final class SessionRegistry
+final class SessionRegistry implements SessionRevoker
 {
     /** これより古い記録は、ログインのついでに消す。 */
     private const RETENTION_SECONDS = 90 * 86400;

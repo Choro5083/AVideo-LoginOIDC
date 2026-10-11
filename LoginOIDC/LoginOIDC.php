@@ -134,11 +134,11 @@ class LoginOIDC extends PluginAbstract
         $obj->syncClientSecretFile = '';
         $obj->syncRoleSource = self::select(
             [
-                SyncRoleSource::ClientRoles->value => 'client role',
-                SyncRoleSource::RealmRoles->value => 'realm role',
-                SyncRoleSource::Groups->value => 'group',
+                SyncRoleSource::Groups->value => 'group（view-users で読める）',
+                SyncRoleSource::RealmRoles->value => 'realm role（view-realm が要る）',
+                SyncRoleSource::ClientRoles->value => 'client role（view-clients が要る。全 client のシークレットを読める権限）',
             ],
-            SyncRoleSource::ClientRoles->value,
+            SyncRoleSource::Groups->value,
         );
         $obj->syncRoleClientId = '';
         $obj->syncMaxDisableRatio = 20;
@@ -250,8 +250,8 @@ class LoginOIDC extends PluginAbstract
             'syncEnabled' => ['Keycloak の同期を使う', 'cron から CLI を実行する'],
             'syncAdminUrl' => ['Admin API の URL', '空なら issuer から導出する'],
             'syncClientId' => ['同期用の Client ID', 'service account を持つ、同期専用の client'],
-            'syncClientSecretFile' => ['同期用の Client secret のファイル', 'シークレットは DB に保存しない。環境変数でも渡せる'],
-            'syncRoleSource' => ['同期で読む割り当ての種類', 'ログイン時の claim と同じ内容になるように選ぶ'],
+            'syncClientSecretFile' => ['同期用の Client secret のファイル', 'シークレットは DB に保存しない。環境変数 LOGINOIDC_SYNC_CLIENT_SECRET でも渡せる'],
+            'syncRoleSource' => ['同期で読む割り当ての種類', 'ログイン時の claim（rolesClaimPath）と同じ内容になるように選ぶ。食い違うと、ログインと同期で権限が食い違う'],
             'syncRoleClientId' => ['同期で読む client role の Client ID', '種類が client role のときに使う'],
             'syncMaxDisableRatio' => ['1回の同期で無効化してよい割合（%）', '超えたら何も変更せずに止める'],
             'debugLog' => ['詳細なログを出す', 'トークンの中身は出さない'],
