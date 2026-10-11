@@ -105,6 +105,7 @@ bash dev/e2e/run-all.sh
 | `03-native.sh` | ネイティブログインの制御、Encoder の例外、Cookie からの復元 |
 | `04-auto-redirect.sh` | 未ログイン時の自動リダイレクト |
 | `05-sync.sh` | Keycloak の同期 |
+| `06-upload.sh` | SSO のユーザが Encoder を通して動画を投稿する（実際に変換するので時間がかかる） |
 
 **`05-sync.sh` は Keycloak のユーザを変更・削除する。** 流し終えたら、Keycloak のコンテナを作り直して元に戻す（「作り直す」を参照）。続けてもう一度流すときも、先に作り直す。
 

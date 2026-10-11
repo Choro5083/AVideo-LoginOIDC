@@ -14,7 +14,7 @@ Keycloak をはじめ、OpenID Connect に対応した任意の IdP で使える
 
 | AVideo | コミット | 確認日 |
 |---|---|---|
-| （未確認） | | |
+| v29.3.0 | `12d5c1042` | 2026-10-11（開発環境。MariaDB 12.3、PHP 8.5、Keycloak 26.8.0、Encoder は同日の最新） |
 
 ## 依存
 

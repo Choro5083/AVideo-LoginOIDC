@@ -5,7 +5,7 @@
 # （05-sync.sh が Keycloak のユーザを変更・削除するため）。
 cd "$(dirname "$0")" || exit 1
 failed=0
-for scenario in 0[1-5]-*.sh; do
+for scenario in 0[1-6]-*.sh; do
     echo "=== $scenario"
     bash "$scenario" || failed=$((failed + 1))
 done
