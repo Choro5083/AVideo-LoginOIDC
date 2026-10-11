@@ -34,6 +34,7 @@ final class Settings
         public readonly bool $useUserInfo,
         public readonly string $caCertFile,
         public readonly int $clockSkewSeconds,
+        public readonly bool $allowInsecureHttp,
         public readonly string $buttonLabel,
         public readonly bool $autoRedirect,
         public readonly bool $createUsers,
@@ -86,6 +87,7 @@ final class Settings
             useUserInfo: self::bool($raw, 'useUserInfo'),
             caCertFile: self::string($raw, 'caCertFile'),
             clockSkewSeconds: self::intInRange($raw, 'clockSkewSeconds', 0, 600),
+            allowInsecureHttp: self::bool($raw, 'allowInsecureHttp'),
             buttonLabel: self::string($raw, 'buttonLabel'),
             autoRedirect: self::bool($raw, 'autoRedirect'),
             createUsers: self::bool($raw, 'createUsers'),
@@ -123,6 +125,38 @@ final class Settings
     public function isConfigured(): bool
     {
         return $this->issuer !== '' && $this->clientId !== '';
+    }
+
+    /**
+     * クライアントシークレット。ファイルが指定されていれば、そちらを優先する。
+     *
+     * @throws InvalidSettingException ファイルを読めない、またはシークレットが空のとき
+     */
+    public function resolveClientSecret(): string
+    {
+        return self::readSecret('clientSecretFile', $this->clientSecretFile, $this->clientSecret, 'clientSecret');
+    }
+
+    /** @throws InvalidSettingException */
+    private static function readSecret(string $fileSetting, string $file, string $inline, string $inlineSetting): string
+    {
+        if ($file === '') {
+            if ($inline === '') {
+                throw new InvalidSettingException("{$inlineSetting}: no secret is configured");
+            }
+
+            return $inline;
+        }
+        $content = is_readable($file) ? file_get_contents($file) : false;
+        if ($content === false) {
+            throw new InvalidSettingException("{$fileSetting}: cannot read file: {$file}");
+        }
+        $secret = trim($content);
+        if ($secret === '') {
+            throw new InvalidSettingException("{$fileSetting}: file is empty: {$file}");
+        }
+
+        return $secret;
     }
 
     /**
@@ -186,16 +220,16 @@ final class Settings
         try {
             $decoded = json_decode($json, true, 8, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            throw new InvalidSettingException("{$name}: JSON として読めない（{$e->getMessage()}）", 0, $e);
+            throw new InvalidSettingException("{$name}: not valid JSON ({$e->getMessage()})", 0, $e);
         }
         if (!is_array($decoded) || ($decoded !== [] && array_is_list($decoded))) {
-            throw new InvalidSettingException("{$name}: 「claim の値: [...]」の形のオブジェクトで書く");
+            throw new InvalidSettingException("{$name}: must be an object of the form {\"claim value\": [...]}");
         }
 
         $result = [];
         foreach ($decoded as $claimValue => $targets) {
             if (!is_array($targets) || !array_is_list($targets)) {
-                throw new InvalidSettingException("{$name}.{$claimValue}: 値は配列で書く");
+                throw new InvalidSettingException("{$name}.{$claimValue}: value must be an array");
             }
             $result[(string) $claimValue] = $targets;
         }
@@ -216,7 +250,7 @@ final class Settings
                 if ($parsed === null) {
                     $allowed = implode(', ', array_column(UserFlag::cases(), 'value'));
                     $shown = is_scalar($flag) ? (string) $flag : gettype($flag);
-                    throw new InvalidSettingException("{$name}: 「{$shown}」は使えない。使えるのは {$allowed}");
+                    throw new InvalidSettingException("{$name}: \"{$shown}\" is not allowed. Allowed: {$allowed}");
                 }
 
                 return $parsed;
@@ -238,7 +272,7 @@ final class Settings
                     return (int) $value;
                 }
                 $shown = is_scalar($value) ? (string) $value : gettype($value);
-                throw new InvalidSettingException("{$name}: 「{$shown}」は user group の ID（正の整数）ではない");
+                throw new InvalidSettingException("{$name}: \"{$shown}\" is not a user group ID (positive integer)");
             },
             $values,
         );
@@ -262,7 +296,7 @@ final class Settings
     {
         $value = $raw[$name] ?? '';
         if (!is_scalar($value)) {
-            throw new InvalidSettingException("{$name}: 文字列ではない");
+            throw new InvalidSettingException("{$name}: must be a string");
         }
 
         return trim((string) $value);
@@ -282,11 +316,11 @@ final class Settings
     {
         $value = $raw[$name] ?? null;
         if (!is_int($value) && !(is_string($value) && preg_match('/^\d+$/', trim($value)) === 1)) {
-            throw new InvalidSettingException("{$name}: 整数で書く");
+            throw new InvalidSettingException("{$name}: must be an integer");
         }
         $int = (int) $value;
         if ($int < $min || $int > $max) {
-            throw new InvalidSettingException("{$name}: {$min} 以上 {$max} 以下で書く");
+            throw new InvalidSettingException("{$name}: must be between {$min} and {$max}");
         }
 
         return $int;
@@ -305,7 +339,7 @@ final class Settings
         $parsed = $enum::tryFrom($value);
         if ($parsed === null) {
             $allowed = implode(', ', array_column($enum::cases(), 'value'));
-            throw new InvalidSettingException("{$name}: 「{$value}」は使えない。使えるのは {$allowed}");
+            throw new InvalidSettingException("{$name}: \"{$value}\" is not allowed. Allowed: {$allowed}");
         }
 
         return $parsed;

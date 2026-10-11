@@ -10,6 +10,9 @@ services:
       - "${LOGINOIDC_REPO:?LOGINOIDC_REPO を設定する}/LoginOIDC:/var/www/html/AVideo/plugin/LoginOIDC"
       # テストを AVideo 本体の PHP と phpunit で流すために、リポジトリ全体も見せる。
       - "${LOGINOIDC_REPO}:/opt/loginoidc:ro"
+    # Keycloak は avideo とネットワークを共有するので、公開するポートはこちらに書く。
+    ports:
+      - "${KEYCLOAK_PORT:-8081}:${KEYCLOAK_PORT:-8081}"
 
   # DB は MariaDB の LTS に固定する。本家の定義は Dockerfile.mariadb で
   # mariadb:latest（短期サポートの版）を使うため、作り直すたびに版が変わりうる。
@@ -36,24 +39,32 @@ services:
   # Keycloak のデータは永続化しない。コンテナを作り直すたびに realm 定義から
   # 入り直すので、テストを毎回同じ状態から始められる。ユーザの ID（= sub）は
   # realm 定義で固定してあり、作り直しても変わらない。
+  #
+  # ネットワークは avideo と共有する（network_mode）。issuer の URL は、
+  # ブラウザからも avideo のコンテナからも同じ名前で届かなければならない。
+  # avideo の entrypoint は自分のホスト名を 127.0.0.1 に向けるため、別の
+  # コンテナにいる Keycloak には、その名前では届かない。同じネットワークに
+  # 置けば、avideo からは 127.0.0.1:8081 で、Keycloak からは 127.0.0.1:443 で
+  # 互いに届く。avideo を作り直したら、keycloak も作り直すこと。
   keycloak:
     image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.8.0}
     command: start-dev --import-realm
     restart: "unless-stopped"
+    network_mode: "service:avideo"
+    depends_on:
+      avideo:
+        condition: service_started
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER:-admin}"
       KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD を設定する}"
       # 発行する issuer に使われる。ブラウザからのアクセス先と一致させる。
       KC_HOSTNAME: "${KEYCLOAK_URL:?KEYCLOAK_URL を設定する}"
       KC_HTTP_ENABLED: "true"
+      KC_HTTP_PORT: "${KEYCLOAK_PORT:-8081}"
       # realm 定義の中の ${...} に入る値
       AVIDEO_BASE_URL: "${AVIDEO_BASE_URL:?AVIDEO_BASE_URL を設定する}"
-    ports:
-      - "${KEYCLOAK_PORT:-8081}:8080"
     volumes:
       - "${LOGINOIDC_REPO}/dev/keycloak/realm-loginoidc-test.json:/opt/keycloak/data/import/realm-loginoidc-test.json:ro"
-    networks:
-      - app_net
 
 volumes:
   avideo_db:

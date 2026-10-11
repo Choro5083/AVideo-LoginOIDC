@@ -36,6 +36,7 @@ final class SettingsTest extends TestCase
             'useUserInfo' => false,
             'caCertFile' => '',
             'clockSkewSeconds' => 60,
+            'allowInsecureHttp' => false,
             'buttonLabel' => 'Login with SSO',
             'autoRedirect' => false,
             'createUsers' => true,
@@ -127,6 +128,36 @@ final class SettingsTest extends TestCase
 
         self::assertSame(120, $settings->clockSkewSeconds);
         self::assertSame(0, $settings->syncMaxDisableRatio);
+    }
+
+    public function testClientSecretFileTakesPrecedence(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'loginoidc');
+        self::assertIsString($file);
+        file_put_contents($file, "from-file\n");
+        try {
+            $settings = Settings::fromDataObject(self::data(['clientSecret' => 'inline', 'clientSecretFile' => $file]));
+
+            self::assertSame('from-file', $settings->resolveClientSecret(), '前後の改行は除く');
+        } finally {
+            unlink($file);
+        }
+        self::assertSame('inline', Settings::fromDataObject(self::data(['clientSecret' => 'inline']))->resolveClientSecret());
+    }
+
+    public function testClientSecretMustBeAvailable(): void
+    {
+        try {
+            Settings::fromDataObject(self::data(['clientSecret' => '']))->resolveClientSecret();
+            self::fail('シークレットが無いのに通った');
+        } catch (InvalidSettingException $e) {
+            self::assertStringContainsString('clientSecret:', $e->getMessage());
+        }
+
+        $this->expectException(InvalidSettingException::class);
+        $this->expectExceptionMessage('clientSecretFile:');
+
+        Settings::fromDataObject(self::data(['clientSecretFile' => '/nonexistent/secret']))->resolveClientSecret();
     }
 
     /** @return iterable<string, array{array<string, mixed>, string}> */

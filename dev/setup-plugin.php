@@ -53,6 +53,8 @@ $data = $plugin->getEmptyDataObject();
 $data->issuer = $keycloakUrl . '/realms/loginoidc-test';
 $data->clientId = 'avideo';
 $data->clientSecret = 'dev-only-avideo-secret';
+// 開発環境の Keycloak は http で動かしている。
+$data->allowInsecureHttp = true;
 $data->rolesClaimPath = 'resource_access.avideo.roles';
 $data->managedFlags = 'isAdmin, canUpload';
 $data->flagMapping->value = '{"admin": ["isAdmin"], "uploader": ["canUpload"]}';

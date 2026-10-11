@@ -7,7 +7,7 @@ global $global;
 try {
     $loginOidcLabel = LoginOIDC::settings()->buttonLabel;
 } catch (\LoginOIDC\InvalidSettingException $e) {
-    _error_log('LoginOIDC: 設定を読めないためログインボタンを出さない: ' . $e->getMessage());
+    _error_log('LoginOIDC: sign-in button hidden because the settings are invalid: ' . $e->getMessage(), AVideoLog::$ERROR);
 
     return;
 }

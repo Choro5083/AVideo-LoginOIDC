@@ -134,4 +134,8 @@ docker compose -f ... -f ... up -d avideo database database_encoder memcached ke
 
 **本家の定義は `mariadb:latest` を使う。** 短期サポートの版になることがあり、作り直すたびに版が変わりうる。`compose.dev.yml` で LTS に固定してある。
 
+**`avideo` のコンテナの中では、自分のホスト名（`SERVER_NAME`）が 127.0.0.1 を指す。** entrypoint が `/etc/hosts` に書き足すため。Keycloak を別のコンテナとして同じホスト名で公開すると、ブラウザからは届くが、`avideo` のコンテナからは届かない（Discovery が失敗する）。`compose.dev.yml` では、Keycloak を `avideo` と同じネットワークに置いて（`network_mode: "service:avideo"`）解決してある。そのため Keycloak のポートは `avideo` のサービスで公開していて、`avideo` を作り直したら `keycloak` も作り直す必要がある。
+
+**AVideo のログは `videos/avideo.log` ではなく、コンテナの標準エラーに出る。** `docker logs avideo-avideo-1` で読む。ASCII 以外はエスケープされる。
+
 **Keycloak のデータ用に名前付きボリュームを付けると起動しない。** ボリュームが root の持ち物になり、Keycloak（uid 1000）が書けないため。永続化しない構成にしてある。
