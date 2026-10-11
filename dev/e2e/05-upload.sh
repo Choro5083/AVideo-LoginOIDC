@@ -34,6 +34,9 @@ contains "the Encoder queues the file" '"error":false' "$(echo "$upload" | tr -d
 echo "waiting for the Encoder to convert and deliver (up to 4 minutes)"
 for _ in $(seq 1 48); do
     [ "$(video_field status)" = a ] && break
+    # Encoder は、状態の問い合わせを受けたときにキューの処理を始める。ふだんは、開いている
+    # Encoder の画面が定期的に問い合わせている。ここでは代わりに問い合わせる。
+    curl -sk -b "$WORK/enc" -o /dev/null "$AVIDEO_URL/Encoder/status"
     sleep 5
 done
 check "the video arrived at AVideo and is active" a "$(video_field status)"
@@ -50,6 +53,12 @@ login=$(curl -sk -c "$WORK/enc2" -b "$WORK/enc2" --data-urlencode user=carol --d
 check "the Encoder does not give carol the upload permission" False "$(echo "$login" | enc_json canUpload)"
 
 db "delete from videos where title='$TITLE'" 2>/dev/null
-dexec "$AVIDEO_CONTAINER" bash -c "rm -rf /var/www/html/AVideo/videos/$filename /tmp/e2e-source.mp4" 2>/dev/null
+dexec "$AVIDEO_CONTAINER" rm -f /tmp/e2e-source.mp4
+# 動画のディレクトリを消す。名前が空のまま rm -rf すると videos/ ごと消える（AVideo の設定ファイルも
+# そこにある）ので、名前が取れていて、動画のディレクトリの形をしているときだけ消す。
+case "$filename" in
+    ''|*[!A-Za-z0-9_.-]*|.|..) ;;
+    *) dexec "$AVIDEO_CONTAINER" rm -rf "/var/www/html/AVideo/videos/$filename" ;;
+esac
 reset_settings
 finish

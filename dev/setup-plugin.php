@@ -49,10 +49,13 @@ foreach (['login_oidc_identities', 'login_oidc_sessions'] as $table) {
     }
 }
 
+// 有効にした直後は、本体がプラグインの行を「無い」とキャッシュしていることがある。読み直させる。
+Plugin::getPluginByUUID($plugin->getUUID(), true);
+
 $data = $plugin->getEmptyDataObject();
 $data->issuer = $keycloakUrl . '/realms/loginoidc-test';
 $data->clientId = 'avideo';
-$data->clientSecret = 'dev-only-avideo-secret';
+$data->clientSecret->value = 'dev-only-avideo-secret';
 // 開発環境の Keycloak は http で動かしている。
 $data->allowInsecureHttp = true;
 // 結合テストは、同じ接続元から短い間に何十回もログインする。
@@ -65,7 +68,8 @@ $data->flagMapping->value = '{"avideo-admins": ["isAdmin"], "avideo-uploaders": 
 $data->syncEnabled = true;
 $data->syncClientId = 'avideo-sync';
 $data->syncRoleSource->value = 'groups';
-if (empty($plugin->setDataObject($data))) {
+// 管理画面から保存したときと同じように、暗号化する項目を暗号化してから保存する。
+if (empty($plugin->setDataObject(Plugin::encryptIfNeed($data)))) {
     fwrite(STDERR, "設定を保存できなかった\n");
     exit(1);
 }

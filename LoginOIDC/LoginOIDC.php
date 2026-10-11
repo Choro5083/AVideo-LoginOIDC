@@ -3,6 +3,8 @@
 
 declare(strict_types=1);
 
+use LoginOIDC\Admin\Finding;
+use LoginOIDC\Admin\SettingsReport;
 use LoginOIDC\AVideo\RequestGuard;
 use LoginOIDC\ClientAuthMethod;
 use LoginOIDC\InvalidSettingException;
@@ -47,9 +49,53 @@ class LoginOIDC extends PluginAbstract
 
     public function getDescription()
     {
-        return 'OpenID Connect によるログイン（Authorization Code Flow + PKCE）。'
-            . '<br>IdP に登録するリダイレクト URI: <strong>' . self::callbackUrl() . '</strong>'
-            . '<br>Back-Channel Logout の通知先: <strong>' . self::backchannelLogoutUrl() . '</strong>';
+        return 'Sign in with OpenID Connect (Authorization Code Flow + PKCE).'
+            . '<br>Redirect URI to register at the provider: <strong>' . self::callbackUrl() . '</strong>'
+            . '<br>Back-channel logout URL: <strong>' . self::backchannelLogoutUrl() . '</strong>'
+            . self::settingsStatus();
+    }
+
+    /** プラグインの一覧に、設定の検査を開くボタンを出す。 */
+    public function getPluginMenu()
+    {
+        return '<button onclick="avideoModalIframe(webSiteRootURL+\'plugin/LoginOIDC/check.php\')"'
+            . ' class="btn btn-primary btn-sm btn-xs btn-block"><i class="fas fa-stethoscope"></i> Check settings</button>';
+    }
+
+    /**
+     * 設定に問題があれば、プラグインの一覧の説明欄に出す。
+     *
+     * 本体には、設定を保存するときにプラグインが割り込む仕組みが無い。保存すると一覧が
+     * 読み直されるので、ここに出しておけば、誤った設定を保存した直後に気づける。
+     */
+    private static function settingsStatus(): string
+    {
+        if (empty(AVideoPlugin::isEnabledByName('LoginOIDC'))) {
+            return '';
+        }
+        try {
+            $findings = SettingsReport::quick(self::settings(...));
+        } catch (\Throwable $e) {
+            // 説明欄を作れないだけで、プラグインの一覧まで落とさない。
+            return '<br><span class="label label-danger">The settings could not be checked</span> '
+                . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+        }
+        $errors = array_values(array_filter($findings, static fn (Finding $f): bool => $f->level === Finding::ERROR));
+        $warnings = count($findings) - count($errors);
+        if ($findings === []) {
+            return '';
+        }
+
+        $html = '<br>';
+        if ($errors !== []) {
+            $first = htmlspecialchars("{$errors[0]->setting}: {$errors[0]->message}", ENT_QUOTES, 'UTF-8');
+            $html .= '<span class="label label-danger">' . count($errors) . ' error(s) in the settings</span> ' . $first;
+        }
+        if ($warnings > 0) {
+            $html .= ' <span class="label label-warning">' . $warnings . ' warning(s)</span>';
+        }
+
+        return $html . ' &mdash; open "Check settings" for the details.';
     }
 
     public static function callbackUrl(): string
@@ -73,7 +119,8 @@ class LoginOIDC extends PluginAbstract
         // --- 接続 ---
         $obj->issuer = '';
         $obj->clientId = '';
-        $obj->clientSecret = '';
+        // 本体の「encrypted」型。管理画面から保存すると、DB には暗号化して入る。
+        $obj->clientSecret = self::encrypted();
         $obj->clientSecretFile = '';
         $obj->clientAuthMethod = self::select(
             [
@@ -161,19 +208,67 @@ class LoginOIDC extends PluginAbstract
      */
     public static function settings(): Settings
     {
-        return Settings::fromDataObject(AVideoPlugin::getDataObject('LoginOIDC'));
+        // 本体が持つ設定のオブジェクトを書き換えないよう、写しに対して復号する
+        // （書き換えると、他の処理が平文のまま保存し直すおそれがある）。
+        $data = unserialize(serialize(AVideoPlugin::getDataObject('LoginOIDC')));
+
+        return Settings::fromDataObject(self::decryptSecrets($data));
     }
 
-    /** リクエストの開始時。ログアウトの連動と、無効化されたセッションの確認を行う。 */
+    /**
+     * 暗号化して保存された項目を元に戻す。
+     *
+     * 本体の Plugin::decryptIfNeed() は使わない。type が配列の項目（選択肢）があると、
+     * 型の確認をせずに strtolower() に渡して落ちる。
+     */
+    private static function decryptSecrets(stdClass $data): stdClass
+    {
+        foreach (get_object_vars($data) as $value) {
+            if (
+                is_object($value)
+                && is_string($value->type ?? null) && strtolower($value->type) === 'encrypted'
+                && is_string($value->value ?? null) && $value->value !== ''
+            ) {
+                // 暗号化されていない値（管理画面を通さずに入れたもの）には false が返る。そのまま使う。
+                $plain = Plugin::isEncrypted($value->value);
+                if (is_string($plain)) {
+                    $value->value = $plain;
+                }
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * リクエストの開始時。ログアウトの連動と、無効化されたセッションの確認を行う。
+     *
+     * このフックは、サイトのすべてのリクエストで呼ばれる。ここで例外を外に出すと、サイト全体が
+     * 落ちる。想定していない失敗は記録するだけにして、本体の処理を続けさせる。
+     */
     public function getStart()
     {
-        RequestGuard::onRequestStart();
+        try {
+            RequestGuard::onRequestStart();
+        } catch (\Throwable $e) {
+            _error_log('LoginOIDC: unexpected failure at request start: ' . $e->getMessage(), AVideoLog::$ERROR);
+        }
     }
 
-    /** ログインの成立時。IdP を経由しないログインを、設定に従って取り消す。 */
+    /**
+     * ログインの成立時。IdP を経由しないログインを、設定に従って取り消す。
+     *
+     * 判定の途中で想定していない失敗が起きたら、ログインを取り消す。通してしまうと、
+     * 制御をすり抜けられるため。
+     */
     public function onUserSignIn($users_id)
     {
-        RequestGuard::onUserSignIn((int) $users_id);
+        try {
+            RequestGuard::onUserSignIn((int) $users_id);
+        } catch (\Throwable $e) {
+            _error_log('LoginOIDC: unexpected failure at sign-in, denying it: ' . $e->getMessage(), AVideoLog::$ERROR);
+            User::logoff();
+        }
     }
 
     /** ログイン画面に出すボタン。設定が済んでいなければ出さない。 */
@@ -199,6 +294,15 @@ class LoginOIDC extends PluginAbstract
         return $o;
     }
 
+    private static function encrypted(): stdClass
+    {
+        $o = new stdClass();
+        $o->type = 'encrypted';
+        $o->value = '';
+
+        return $o;
+    }
+
     private static function textarea(string $default): stdClass
     {
         $o = new stdClass();
@@ -218,7 +322,7 @@ class LoginOIDC extends PluginAbstract
         return [
             'issuer' => ['Issuer', 'IdP の issuer の URL。ここから .well-known/openid-configuration を読む'],
             'clientId' => ['Client ID', ''],
-            'clientSecret' => ['Client secret', 'AVideo の DB に保存される。ファイルで渡すなら空にして clientSecretFile を使う'],
+            'clientSecret' => ['Client secret', 'AVideo の DB に暗号化して保存される。ファイルで渡すなら空にして clientSecretFile を使う'],
             'clientSecretFile' => ['Client secret のファイル', 'シークレットを書いたファイルのパス。指定すると clientSecret より優先する'],
             'clientAuthMethod' => ['クライアント認証の方式', 'トークンエンドポイントでの認証の方式'],
             'scopes' => ['Scope', '空白区切り。openid は必須'],

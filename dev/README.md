@@ -66,13 +66,18 @@ docker compose -f docker-compose.yml -f <このリポジトリ>/dev/compose.dev.
 | Keycloak | `http://<HOST>:8081/` |
 | Discovery | `http://<HOST>:8081/realms/loginoidc-test/.well-known/openid-configuration` |
 
-## プラグインを有効にする
+## インストールの後に行うこと
 
-`avideo` のコンテナの中で実行する。プラグインを有効にし、テーブルを作り、テスト用の realm に向けた設定を入れる。
+AVideo を（再）インストールした後に、1度流す。
 
 ```bash
-docker exec avideo-avideo-1 php /opt/loginoidc/dev/setup-plugin.php http://<HOST>:8081
+KEYCLOAK_URL=http://<HOST>:8081 SUDO=sudo bash dev/prepare.sh   # docker に sudo が要らなければ SUDO は不要
 ```
+
+行うのは次の2つ。
+
+- Encoder から AVideo への通信で、TLS の検証を切る（AVideo の証明書が自己署名のため。「はまった点」を参照）
+- LoginOIDC を有効にし、テーブルを作り、テスト用の realm に向けた設定を入れる（`dev/setup-plugin.php`）
 
 ## テスト
 
@@ -104,10 +109,13 @@ bash dev/e2e/run-all.sh
 | `02-logout.sh` | RP-Initiated Logout、Back-Channel Logout |
 | `03-native.sh` | ネイティブログインの制御、Encoder の例外、Cookie からの復元 |
 | `04-auto-redirect.sh` | 未ログイン時の自動リダイレクト |
-| `05-sync.sh` | Keycloak の同期 |
-| `06-upload.sh` | SSO のユーザが Encoder を通して動画を投稿する（実際に変換するので時間がかかる） |
+| `05-upload.sh` | SSO のユーザが Encoder を通して動画を投稿する（実際に変換するので時間がかかる） |
+| `06-admin.sh` | 設定の検査のページ、プラグインの一覧への表示、シークレットの暗号化 |
+| `07-sync.sh` | Keycloak の同期 |
 
-**`05-sync.sh` は Keycloak のユーザを変更・削除する。** 流し終えたら、Keycloak のコンテナを作り直して元に戻す（「作り直す」を参照）。続けてもう一度流すときも、先に作り直す。
+**`07-sync.sh` は Keycloak のユーザを変更・削除する。** そのため最後に置いてある。 流し終えたら、Keycloak のコンテナを作り直して元に戻す（「作り直す」を参照）。続けてもう一度流すときも、先に作り直す。
+
+**Encoder は、状態の問い合わせを受けたときにキューの処理を始める。** ふだんは、開いている Encoder の画面が定期的に問い合わせている。画面を開かずにアップロードだけ行うと、変換が始まらない（`05-upload.sh` は、待っている間に自分で問い合わせている）。
 
 ## 同期を試す
 
@@ -161,6 +169,8 @@ docker volume rm avideo_avideo_db avideo_avideo_db_encoder
 sudo rm -rf .compose/videos .compose/encoder/videos/configuration.php
 docker compose -f ... -f ... up -d avideo database database_encoder memcached keycloak
 ```
+
+作り直したら、`dev/prepare.sh` を流す。
 
 **Encoder の設定ファイルも一緒に消す。** DB を消しても `.compose/encoder/videos/configuration.php` が残っていると、インストーラは Encoder を設定済みと見なして、空の DB にテーブルを作らない。Encoder を開くと `Table 'avideo_encoder.encoder_queue' doesn't exist` で落ちる。消し忘れたときは、ファイルを消してからインストーラを流し直す。
 
