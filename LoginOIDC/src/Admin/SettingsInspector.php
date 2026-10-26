@@ -24,14 +24,15 @@ final class SettingsInspector
     /**
      * @param  callable(int): bool    $groupExists whether AVideo has a user group with that ID
      * @param  callable(string): bool $userExists  whether AVideo has a user with that username
+     * @param  list<string>           $trustedProxies AVideo's $global['trustedProxies']
      * @return list<Finding>
      */
-    public static function inspect(Settings $settings, callable $groupExists, callable $userExists): array
+    public static function inspect(Settings $settings, callable $groupExists, callable $userExists, array $trustedProxies = []): array
     {
         return [
             ...self::connection($settings),
             ...self::permissions($settings, $groupExists),
-            ...self::nativeLogin($settings, $userExists),
+            ...self::nativeLogin($settings, $userExists, $trustedProxies),
             ...self::sync($settings),
         ];
     }
@@ -150,9 +151,10 @@ final class SettingsInspector
 
     /**
      * @param  callable(string): bool $userExists
+     * @param  list<string>           $trustedProxies
      * @return list<Finding>
      */
-    private static function nativeLogin(Settings $settings, callable $userExists): array
+    private static function nativeLogin(Settings $settings, callable $userExists, array $trustedProxies): array
     {
         $findings = [];
         if ($settings->nativeLoginMode === NativeLoginMode::Allowlist) {
@@ -173,6 +175,17 @@ final class SettingsInspector
                 $findings[] = Finding::error('encoderAddresses', '"%s" is not an IP address or a CIDR range. It matches nothing.', $address);
             } elseif (IpMatcher::coversEverything($address)) {
                 $findings[] = Finding::error('encoderAddresses', '"%s" covers every address, which disables the native sign-in control.', $address);
+            }
+        }
+        // Behind a reverse proxy, requests through the proxy come from the proxy's address. An Encoder
+        // address that covers the proxy exempts everyone who comes through it.
+        foreach ($trustedProxies as $proxy) {
+            if (IpMatcher::matchesAny($proxy, $settings->encoderAddresses)) {
+                $findings[] = Finding::error(
+                    'encoderAddresses',
+                    'Covers the trusted reverse proxy %s. Everyone who comes through the proxy would be exempt. List the Encoder\'s own address.',
+                    $proxy,
+                );
             }
         }
         if ($settings->nativeLoginMode !== NativeLoginMode::Allow && $settings->encoderAddresses === []) {

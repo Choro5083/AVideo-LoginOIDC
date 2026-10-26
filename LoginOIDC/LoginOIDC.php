@@ -368,7 +368,7 @@ class LoginOIDC extends PluginAbstract
             'backchannelLogout' => ['Accept logout notices from the provider', 'Back-Channel Logout'],
             'nativeLoginMode' => ['Native sign-in control', 'How far sign-in with a username and password is allowed.'],
             'nativeLoginAllowlist' => ['Usernames allowed to sign in natively', 'One per line. Used when the control is set to the allowlist.'],
-            'encoderAddresses' => ['Encoder addresses', 'One per line, an IP address or a CIDR range. Sign-ins from these addresses are not controlled.'],
+            'encoderAddresses' => ['Encoder addresses', 'One per line, an IP address or a CIDR range. Sign-ins from these addresses are not controlled. Behind a reverse proxy, list the address of the Encoder itself and the proxy in the trustedProxies of AVideo, never the proxy here.'],
             'syncEnabled' => ['Use the Keycloak sync', 'Run the CLI from cron.'],
             'syncAdminUrl' => ['Admin API URL', 'Empty derives it from the issuer.'],
             'syncClientId' => ['Client ID for the sync', 'A client dedicated to the sync, with a service account.'],

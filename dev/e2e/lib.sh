@@ -110,6 +110,22 @@ $r = $global["mysqli"]->query("select id from users where user=\"" . $global["my
 echo User::getUserHash((int) $r->fetch_row()[0]);' "$1" 2>/dev/null | tail -1
 }
 
+# Sets AVideo's $global['trustedProxies'] to one address, or removes it. trusted_proxies [address]
+# Written just above the bootstrap line of configuration.php, between marker comments, so it can be removed again.
+trusted_proxies() {
+    local conf=/var/www/html/AVideo/videos/configuration.php
+    dexec "$AVIDEO_CONTAINER" sed -i '/^\/\/ e2e-trusted-proxies begin$/,/^\/\/ e2e-trusted-proxies end$/d' "$conf"
+    if [ -n "${1:-}" ]; then
+        dexec "$AVIDEO_CONTAINER" sed -i \
+            "s|^// Do not change the bootstrap below\.|// e2e-trusted-proxies begin\n\$global['trustedProxies'] = ['$1'];\n// e2e-trusted-proxies end\n&|" "$conf"
+    fi
+    # PHP's opcache keeps serving the old configuration.php for up to opcache.revalidate_freq
+    # seconds (2 by default) after it changes. Wait that long before the next request.
+    sleep 3
+}
+# The address AVideo sees for requests from this host (the gateway of the container's network)
+host_address() { $SUDO docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}} {{end}}' "$AVIDEO_CONTAINER" | awk '{print $1}'; }
+
 # Runs the sync. The exit code is appended as the last line. run_sync [arguments...]
 run_sync() {
     local out

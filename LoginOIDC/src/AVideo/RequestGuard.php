@@ -104,6 +104,25 @@ final class RequestGuard
         }
     }
 
+    /**
+     * The address of the client, as AVideo itself determines it (getRealIpAddr()).
+     *
+     * The connecting address (REMOTE_ADDR) is used, unless it is one of the reverse proxies the
+     * operator listed in AVideo's $global['trustedProxies']. Only then the address the proxy
+     * passed on (X-Real-IP, X-Forwarded-For) is used. Forwarding headers from anyone else are
+     * ignored, because the sender controls them. The same rule decides AVideo's own rate limit,
+     * so the Encoder exception and the rate limit always see the same address.
+     */
+    private static function clientAddress(): string
+    {
+        if (function_exists('getRealIpAddr')) {
+            return (string) getRealIpAddr();
+        }
+
+        // Older AVideo without the function: only the connecting address can be trusted.
+        return (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    }
+
     /** Sends an anonymous page view to the provider's sign-in, when configured. */
     private static function redirectToProviderIfAnonymous(Settings $settings): void
     {
@@ -116,7 +135,7 @@ final class RequestGuard
             scriptName: (string) ($_SERVER['SCRIPT_NAME'] ?? ''),
             accept: (string) ($_SERVER['HTTP_ACCEPT'] ?? ''),
             ajax: strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest',
-            remoteAddress: (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            remoteAddress: self::clientAddress(),
         );
         if (!AutoRedirectPolicy::shouldRedirect($settings, $request) || \User::isLogged()) {
             return;
@@ -151,8 +170,7 @@ final class RequestGuard
             username: $username,
             linked: $linked,
             viaCookie: self::isRestoringFromCookie(),
-            // Forwarding headers (X-Forwarded-For) are ignored. The sender controls them, so they cannot grant the Encoder exception.
-            remoteAddress: (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            remoteAddress: self::clientAddress(),
         ));
         if ($reason === null) {
             if ($linked) {

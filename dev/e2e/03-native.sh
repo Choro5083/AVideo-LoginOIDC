@@ -37,6 +37,26 @@ check "the same token from another address is denied, even with the Encoder's Us
 check "a wrong token from the Encoder is denied" False "$(from_encoder bob _user_hash_invalid)"
 db "delete from videos where title='e2e'" 2>/dev/null
 
+echo "Encoder exception behind a reverse proxy (this host plays the proxy)"
+# Requests from this host reach AVideo from the gateway of the container's network. Here that address
+# plays a reverse proxy, and 192.0.2.10 an Encoder behind it.
+PROXY=$(host_address)
+via_proxy() { curl -sk -H "X-Forwarded-For: $3" -H "X-Real-IP: $3" "$AVIDEO_URL/login?user=$1&pass=$2&encodedPass=1" \
+    | python3 -c "import json,sys;print(json.load(sys.stdin).get('isLogged'))" 2>/dev/null; }
+setting encoderAddresses "192.0.2.10"
+trusted_proxies ""
+check "no trusted proxy: the forwarded Encoder address is ignored" False "$(via_proxy bob "$BOB_TOKEN" 192.0.2.10)"
+trusted_proxies "$PROXY"
+check "trusted proxy: the Encoder behind it signs in" True "$(via_proxy bob "$BOB_TOKEN" 192.0.2.10)"
+check "trusted proxy: another address behind it is denied" False "$(via_proxy bob "$BOB_TOKEN" 192.0.2.11)"
+check "trusted proxy: a request from the proxy itself is denied" False "$(from_outside bob "$BOB_TOKEN")"
+quick_check() { dexec "$AVIDEO_CONTAINER" php -r '
+require "/var/www/html/AVideo/videos/configuration.php";
+foreach (LoginOIDC\Admin\SettingsReport::quick(fn () => LoginOIDC::settings()) as $f) { echo "{$f->level} {$f->setting}\n"; }' 2>/dev/null; }
+setting encoderAddresses "$PROXY"
+contains "the settings check reports an Encoder address that covers the proxy" "error encoderAddresses" "$(quick_check)"
+trusted_proxies ""
+
 echo "cookie restoration (allow mode)"
 setting nativeLoginMode allow; setting encoderAddresses ""
 curl -sk -c "$WORK/c1" -b "$WORK/c1" -o /dev/null "$AVIDEO_URL/login?user=bob&pass=$BOB_TOKEN&encodedPass=1&rememberme=true"

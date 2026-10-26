@@ -111,6 +111,40 @@ final class SettingsInspectorTest extends TestCase
         self::assertContains($expected, self::inspect($overrides));
     }
 
+    /** @return iterable<string, array{string, list<string>}> */
+    public static function encoderAddressesAndProxies(): iterable
+    {
+        yield 'the proxy itself' => ['127.0.0.1', ['127.0.0.1']];
+        yield 'a range that contains the proxy' => ["192.0.2.10\n198.51.100.0/24", ['198.51.100.7']];
+        yield 'an IPv6 proxy' => ['2001:db8::/32', ['2001:db8::1']];
+    }
+
+    /** @param list<string> $proxies */
+    #[DataProvider('encoderAddressesAndProxies')]
+    public function testReportsAnEncoderAddressThatCoversATrustedProxy(string $encoderAddresses, array $proxies): void
+    {
+        $findings = SettingsInspector::inspect(
+            SettingsFactory::make(['encoderAddresses' => $encoderAddresses] + self::GOOD),
+            static fn (int $groupId): bool => $groupId === 3,
+            static fn (string $username): bool => $username === 'admin',
+            $proxies,
+        );
+
+        self::assertContains('error encoderAddresses', array_map(static fn (Finding $f): string => "{$f->level} {$f->setting}", $findings));
+    }
+
+    public function testAcceptsAnEncoderAddressBesideATrustedProxy(): void
+    {
+        $findings = SettingsInspector::inspect(
+            SettingsFactory::make(self::GOOD),
+            static fn (int $groupId): bool => $groupId === 3,
+            static fn (string $username): bool => $username === 'admin',
+            ['127.0.0.1', '192.0.2.1'],
+        );
+
+        self::assertSame([], $findings);
+    }
+
     public function testSyncSettingsAreIgnoredWhenSyncIsOff(): void
     {
         self::assertSame([], self::inspect(['syncEnabled' => false, 'syncClientId' => '', 'syncRoleSource' => 'clientRoles']));

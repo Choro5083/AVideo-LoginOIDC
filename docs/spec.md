@@ -124,7 +124,7 @@ AVideo has no hook for a plugin to validate its settings when they are saved. Wr
 | Description in the plugin list | The number of problems visible from the values alone, and the first error. The list is reloaded after saving, so a bad save shows right away |
 | Check page ("Check settings" in the list) | The above, plus problems that need the provider (it cannot be reached, it does not support the client authentication method and so on). Admins only |
 
-Examples of what is checked: the shape of the issuer, `openid` among the scopes, a mapping that points at a flag that is not managed, a managed flag that nothing grants (it is removed from everyone), a user group that does not exist, an empty allowlist (no way in when the provider is down), an Encoder address that cannot be read.
+Examples of what is checked: the shape of the issuer, `openid` among the scopes, a mapping that points at a flag that is not managed, a managed flag that nothing grants (it is removed from everyone), a user group that does not exist, an empty allowlist (no way in when the provider is down), an Encoder address that cannot be read, an Encoder address that covers a trusted reverse proxy.
 
 While the settings cannot be read, no sign-in is accepted. Sessions that are already signed in continue.
 
@@ -233,7 +233,24 @@ When a user uploads from AVideo's pages, AVideo hands the Encoder the user's nam
 |---|---|
 | Encoder exception | When the request comes from a configured Encoder IP address, the native sign-in control does not apply |
 
-The origin is taken from the connecting address (`REMOTE_ADDR`). Forwarding headers (`X-Forwarded-For`) are ignored, because the sender controls them. **The Encoder therefore has to reach AVideo on a path that does not go through a reverse proxy.** Through a proxy, the connecting address is the proxy's. AVideo's `isAVideoEncoder()` decides by the User-Agent, which can be forged, so it is not used.
+The origin is determined **by the same rule as AVideo itself** (AVideo's `getRealIpAddr()`).
+
+- By default it is the connecting address (`REMOTE_ADDR`). Forwarding headers (`X-Real-IP`, `X-Forwarded-For`) are ignored, because the sender controls them
+- Only when the connecting address is a reverse proxy listed in AVideo's `$global['trustedProxies']` (`videos/configuration.php`), the address that proxy passed on in the forwarding headers is used
+- AVideo's own sign-in rate limit follows the same rule, so the Encoder exception and the rate limit never look at different addresses
+
+**Behind a reverse proxy, the Encoder's requests go through the proxy too.** To sign in to AVideo, the Encoder uses the URL AVideo named when the user came from AVideo (the public URL). The Encoder's setting `forceStreamerSiteURL` redirects only the requests that deliver the converted video, not the sign-in (checked with AVideo Encoder v8.3.0). So a path that bypasses the proxy cannot be assumed.
+
+Conditions for running behind a reverse proxy:
+
+| Condition | Why |
+|---|---|
+| The proxy is listed in `$global['trustedProxies']` | Otherwise everyone's origin is the proxy's address |
+| The proxy **replaces** `X-Real-IP` and `X-Forwarded-For` instead of appending to them | AVideo uses the first address in these headers. With a proxy that appends to what the user sent, the user can forge the origin |
+| `encoderAddresses` lists the Encoder's own address, **never the proxy's** | Listing the proxy exempts everyone who comes through it. The settings check reports an `encoderAddresses` that covers a trusted proxy as an error |
+| Authentication in front of the proxy (oauth2-proxy and the like) lets the Encoder's requests through | The Encoder is not the user's browser and cannot pass the proxy's authentication |
+
+AVideo's `isAVideoEncoder()` decides by the User-Agent, which can be forged, so it is not used.
 
 **A dedicated account for the Encoder was rejected.** The videos would belong to that account, not to the uploader.
 

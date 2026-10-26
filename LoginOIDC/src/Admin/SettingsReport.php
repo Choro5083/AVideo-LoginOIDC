@@ -35,10 +35,23 @@ final class SettingsReport
         }
 
         try {
-            return SettingsInspector::inspect($settings, self::groupExists(...), self::userExists(...));
+            return SettingsInspector::inspect($settings, self::groupExists(...), self::userExists(...), self::trustedProxies());
         } catch (DbException $e) {
             return [Finding::error('settings', 'Cannot check against the database: %s', $e->getMessage())];
         }
+    }
+
+    /**
+     * AVideo's $global['trustedProxies'] (configuration.php). Only the strings, in case it holds something else.
+     *
+     * @return list<string>
+     */
+    private static function trustedProxies(): array
+    {
+        global $global;
+        $proxies = $global['trustedProxies'] ?? [];
+
+        return is_array($proxies) ? array_values(array_filter($proxies, 'is_string')) : [];
     }
 
     /**
