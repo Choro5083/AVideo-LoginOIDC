@@ -137,7 +137,7 @@ Keep `-u www-data`. Run as root, it leaves cache files owned by root that the we
 | Client | Purpose | Secret |
 |---|---|---|
 | `avideo` | Sign-in | `dev-only-avideo-secret` |
-| `avideo-sync` | Sync (a service account with only `view-users` and `query-users`) | `dev-only-sync-secret` |
+| `avideo-sync` | Sync (a service account with only `view-users` and `query-users`. Its default scopes include `kc-admin-api`, which the Admin API requires) | `dev-only-sync-secret` |
 
 | User | Password | Groups | Client roles (inherited from the groups) |
 |---|---|---|---|

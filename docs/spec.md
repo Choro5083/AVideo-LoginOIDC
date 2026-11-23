@@ -308,6 +308,7 @@ The `sub` of the ID Token is assumed to be the Keycloak user ID (Keycloak's defa
 
 - A client dedicated to the sync, authenticating with its service account (client credentials). It is separate from the sign-in client
 - The permissions are the ones in the table above: only what the chosen kind needs
+- **On Keycloak 26.8.2 or later, assign the client scope `kc-admin-api` to the sync client (as a default scope).** Since 26.8.2 the Admin API accepts only tokens carrying the audience and the scope that this client scope adds. An upgrade assigns it only to Keycloak's own clients (`admin-cli`, `security-admin-console`). Without it the sync stops with HTTP 401 (checked with 26.8.2 on 2026-11-23)
 - **The secret is never stored in the AVideo database.** It is passed to the CLI as a file path (`syncClientSecretFile`) or in the environment variable `LOGINOIDC_SYNC_CLIENT_SECRET`
 
 #### Running it

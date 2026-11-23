@@ -306,6 +306,7 @@ ID Token の `sub` が Keycloak のユーザ ID であること（Keycloak の�
 
 - 同期専用の client を作り、service account（client credentials）で認証する。ログイン用の client とは分ける
 - 権限は上の表の通り。読む種類に必要な分だけを付ける
+- **Keycloak 26.8.2 以降は、同期用の client に client scope `kc-admin-api` を割り当てる（default scope として）。** 26.8.2 から Admin API は、この scope が付けた audience と scope を持つトークンしか受け付けない。版を上げたときに自動で割り当てられるのは Keycloak 自身の client（`admin-cli`、`security-admin-console`）だけ。割り当てていないと、同期は HTTP 401 で止まる（2026-11-23 に 26.8.2 で確認）
 - **シークレットは AVideo の DB に保存しない。** ファイルのパス（`syncClientSecretFile`）か、環境変数 `LOGINOIDC_SYNC_CLIENT_SECRET` で CLI に渡す
 
 #### 実行

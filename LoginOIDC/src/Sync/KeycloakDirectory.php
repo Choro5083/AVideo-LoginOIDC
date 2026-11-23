@@ -140,9 +140,18 @@ final class KeycloakDirectory implements RemoteDirectory
         } catch (HttpException $e) {
             throw new SyncException("Admin API request failed: {$e->getMessage()}", 0, $e);
         }
-        if ($response->status === 401 || $response->status === 403) {
+        // 401: the token itself was not accepted. Since Keycloak 26.8.2 the Admin API accepts only tokens
+        // carrying the kc-admin-api client scope (its audience and scope), which existing realms do not give
+        // to their own clients. 403: the token was accepted, but the account lacks a role.
+        if ($response->status === 401) {
             throw new SyncException(
-                "Admin API denied the request (HTTP {$response->status}) for {$path}. Check the roles of the sync account"
+                "Admin API rejected the token (HTTP 401) for {$path}. On Keycloak 26.8.2 or later, "
+                . 'assign the client scope kc-admin-api to the sync client (as a default scope)'
+            );
+        }
+        if ($response->status === 403) {
+            throw new SyncException(
+                "Admin API denied the request (HTTP 403) for {$path}. Check the roles of the sync account"
             );
         }
 

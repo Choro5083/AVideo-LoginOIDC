@@ -135,7 +135,7 @@ docker exec -u www-data -e LOGINOIDC_SYNC_CLIENT_SECRET=dev-only-sync-secret avi
 | client | 用途 | シークレット |
 |---|---|---|
 | `avideo` | ログイン | `dev-only-avideo-secret` |
-| `avideo-sync` | 同期（service account。`view-users` / `query-users` だけを持つ） | `dev-only-sync-secret` |
+| `avideo-sync` | 同期（service account。`view-users` / `query-users` だけを持つ。Admin API に入るための client scope `kc-admin-api` を default scope に入れてある） | `dev-only-sync-secret` |
 
 | ユーザ | パスワード | group | client role（group から継承） |
 |---|---|---|---|
