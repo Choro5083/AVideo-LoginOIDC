@@ -82,7 +82,8 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": true
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["acr", "basic", "email", "profile", "roles", "web-origins", "kc-admin-api"]
     }
   ],
   "users": [

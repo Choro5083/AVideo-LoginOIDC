@@ -32,6 +32,7 @@ Keycloak をはじめ、OpenID Connect に対応した任意の IdP で使える
 |---|---|---|
 | v29.3.0 | `12d5c1042` | 2026-10-11（開発環境。MariaDB 12.3、PHP 8.5、Keycloak 26.8.0、Encoder は同日の最新） |
 | v29.3.0 | `12d5c1042` | 2026-10-27（Ubuntu 26.04 に直接導入。Apache 2.4 + PHP 8.5、MariaDB 12.3、Keycloak 26.8.0、Encoder v8.3.0。Nginx のリバースプロキシと oauth2-proxy の後ろに置き、Encoder も同じプロキシを通す構成） |
+| v29.8.0 | `d0ab38ce2` | 2026-11-23（開発環境。v29.3.0 からその場で更新。MariaDB 12.3、PHP 8.5、Keycloak 26.8.2、Encoder は 2026-10-11 時点の最新） |
 
 2026-10-31 には、AVideo 14.3 から v29.3.0 に上げた DB で、既存のユーザを `cli/link.php` で IdP のユーザに紐付けられることも確かめた。
 

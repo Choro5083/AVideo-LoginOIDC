@@ -47,7 +47,7 @@ services:
   # avideo reaches Keycloak at 127.0.0.1:8081 and Keycloak reaches avideo at
   # 127.0.0.1:443. After recreating avideo, recreate keycloak too.
   keycloak:
-    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.8.0}
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.8.2}
     command: start-dev --import-realm
     restart: "unless-stopped"
     network_mode: "service:avideo"

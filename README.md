@@ -32,6 +32,7 @@ In development. Everything in scope for v1 of the specification is implemented a
 |---|---|---|
 | v29.3.0 | `12d5c1042` | 2026-10-11 (development environment: MariaDB 12.3, PHP 8.5, Keycloak 26.8.0, the Encoder as of that day) |
 | v29.3.0 | `12d5c1042` | 2026-10-27 (installed directly on Ubuntu 26.04: Apache 2.4 + PHP 8.5, MariaDB 12.3, Keycloak 26.8.0, Encoder v8.3.0. Behind an Nginx reverse proxy and oauth2-proxy, with the Encoder going through the same proxy) |
+| v29.8.0 | `d0ab38ce2` | 2026-11-23 (development environment, upgraded in place from v29.3.0: MariaDB 12.3, PHP 8.5, Keycloak 26.8.2, the Encoder as of 2026-10-11) |
 
 On 2026-10-31 it was also checked that, on a database upgraded from AVideo 14.3 to v29.3.0, existing users can be linked to users at the provider with `cli/link.php`.
 

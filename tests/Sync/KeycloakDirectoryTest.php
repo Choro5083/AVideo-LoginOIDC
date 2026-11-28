@@ -110,6 +110,26 @@ final class KeycloakDirectoryTest extends TestCase
         $directory->lookup('u1');
     }
 
+    public function testRejectedTokenPointsAtTheAdminApiScope(): void
+    {
+        [$directory] = self::directory([self::ADMIN . '/users/u1' => FakeHttpClient::json(['error' => 'HTTP 401 Unauthorized'], 401)]);
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('kc-admin-api');
+
+        $directory->lookup('u1');
+    }
+
+    public function testMissingRolePointsAtTheRoles(): void
+    {
+        [$directory] = self::directory([self::ADMIN . '/users/u1' => FakeHttpClient::json(['error' => 'unknown_error'], 403)]);
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('Check the roles of the sync account');
+
+        $directory->lookup('u1');
+    }
+
     public function testUnreachableApiIsAFailure(): void
     {
         // a URL without a prepared response behaves like a failed connection (FakeHttpClient throws HttpException)
